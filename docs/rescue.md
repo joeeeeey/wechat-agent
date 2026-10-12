@@ -2,7 +2,7 @@
 
 The optional Cloudflare Worker + D1 + Access stack and independent macOS heartbeat are managed in this repository. See [deployment and operations](runbook/wechat-rescue.md).
 
-The current deployment is https://wechat-rescue.critdeck.com. It shows device freshness, observed WeChat state, and recovery confirmation after manual login. Remote login, QR display, browser control, and automated recovery are not implemented.
+The current deployment is https://wechat-rescue.critdeck.com. It shows device freshness, observed WeChat state, and recovery confirmation after manual login. Remote QR rescue is implemented as a disabled prototype; see [prototype and acceptance](runbook/remote-qr-rescue.md). Production still has no remote login or QR display. No browser navigation or automatic recovery is implemented.
 
 The heartbeat currently reads the existing Zhumi `state.json` on work-mac-joey; it is not an adapter for this repository runtime’s `health.json`. Other installations must supply a compatible observation source before claiming live monitoring.
 

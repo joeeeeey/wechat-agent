@@ -67,13 +67,15 @@ def access_uninitialized(error):
     return any('not_enabled' in e.get('message', '') for e in error.errors)
 
 
-def multipart(metadata, source):
+def multipart(metadata, source, modules=None):
     boundary = 'rescue-' + uuid.uuid4().hex
     body = bytearray()
-    for name, filename, kind, value in [
+    parts = [
         ('metadata', None, 'application/json', json.dumps(metadata)),
         ('worker.mjs', 'worker.mjs', 'application/javascript+module', source),
-    ]:
+    ]
+    parts.extend((name, name, 'application/javascript+module', text) for name, text in (modules or {}).items())
+    for name, filename, kind, value in parts:
         body.extend(f'--{boundary}\r\nContent-Disposition: form-data; name="{name}"'.encode())
         if filename:
             body.extend(f'; filename="{filename}"'.encode())
@@ -152,7 +154,10 @@ def reconcile(cf, spec, apply=False):
                     {'type': 'plain_text', 'name': 'ACCESS_AUD', 'text': app['aud']},
                     {'type': 'plain_text', 'name': 'ALLOWED_EMAILS', 'text': json.dumps(spec['allowed_emails'])},
                 ]}
-    body, kind = multipart(metadata, (STACK / 'worker.mjs').read_text())
+    # Remote QR remains disabled until live adapter/intake acceptance is complete.
+    metadata['bindings'].append({'type': 'plain_text', 'name': 'RESCUE_QR_ENABLED', 'text': 'false'})
+    body, kind = multipart(metadata, (STACK / 'worker.mjs').read_text(),
+                           {name: (STACK / name).read_text() for name in ('rescue.mjs', 'rescue-ui.mjs')})
     cf.account_call('PUT', '/workers/scripts/' + spec['name'], body, kind)
     cf.account_call('POST', '/workers/scripts/' + spec['name'] + '/subdomain',
                     {'enabled': False, 'previews_enabled': False})

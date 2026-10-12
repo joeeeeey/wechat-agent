@@ -49,5 +49,13 @@ test('authenticated status returns telemetry and handles database failure',async
   assert.equal(failure.status,503);assert.doesNotMatch(await failure.text(),/private/);
 });
 test('status and script endpoints require authentication',async()=>{
-  for(const path of ['/api/status','/app.js'])assert.equal((await worker.fetch(new Request('https://rescue.example.com'+path),env)).status,401);
+  for(const path of ['/api/status','/app.js','/api/rescue','/api/rescue/cancel','/rescue.js'])assert.equal((await worker.fetch(new Request('https://rescue.example.com'+path),env)).status,401);
+});
+
+test('remote rescue controls are disabled by default and opt-in page includes protected script',async()=>{
+  const r=await request();await authenticate(r,env,certs);
+  const disabled=await worker.fetch(r,env);assert.doesNotMatch(await disabled.text(),/id="rescue-start"/);
+  const enabled=await worker.fetch(r,{...env,RESCUE_QR_ENABLED:'true'});assert.match(await enabled.text(),/id="rescue-start"/);
+  const apiRequest=new Request('https://rescue.example.com/api/rescue',{headers:r.headers});
+  assert.equal((await worker.fetch(apiRequest,env)).status,503);
 });

@@ -30,6 +30,13 @@ class FakeCF:
 
 
 class SafetyTests(unittest.TestCase):
+    def test_worker_upload_includes_imported_protocol_and_ui_modules(self):
+        body, kind = m.multipart({'main_module': 'worker.mjs'}, 'worker',
+                                 {'rescue.mjs': 'protocol', 'rescue-ui.mjs': 'ui'})
+        self.assertIn(b'filename="rescue.mjs"', body)
+        self.assertIn(b'filename="rescue-ui.mjs"', body)
+        self.assertIn('multipart/form-data', kind)
+
     def test_plan_is_read_only(self):
         cf = FakeCF()
         m.reconcile(cf, SPEC)
