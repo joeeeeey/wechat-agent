@@ -24,7 +24,7 @@ Claude, Codex and Grok can be connected through a stdin/stdout executable adapte
 
 Automated core and isolated Playwright fixture tests. Public frontend assets were inspected for DOM selectors; no existing WeChat browser was controlled. Real account login and end-to-end provider execution still require a separate live smoke test. This is not a production reliability or security guarantee.
 
-The browser is kept open without refresh/reload/recovery loops. Disconnects pause work. Old messages and crashed tasks are not automatically replayed. Text only; no attachments or in-task progress streaming yet.
+The browser is kept open without refresh/reload/recovery loops. Disconnects pause work. Old messages and crashed tasks are not automatically replayed. Replies are text only; opt-in [incoming attachment reading](docs/attachments.md) supports image previews and already-local blob files. No in-task progress streaming yet. Attachment selectors and live provider behavior remain unverified; do not enable by restarting an existing session.
 
 Future [rescue channel](docs/rescue.md): fixed authenticated URL for status and explicit recovery, once domain and login flow are supplied. No public QR endpoints.
 
