@@ -2,7 +2,7 @@
 
 一个微信文件传输助手，控制一台电脑。可复用 skill + Playwright 本地运行时，AI harness 可自行替换。
 
-**v0.1 prototype:** dedicated browser launch → local QR login → visible login detection → conversational name/preferences/consent setup → serial text tasks → replies. No multi-machine router. No rescue website yet.
+**v0.1 prototype:** dedicated browser launch → local QR login → visible login detection → conversational name/preferences/consent setup → serial text tasks → replies. No multi-machine router. Authenticated rescue status monitoring is available as an optional deployment.
 
 ## Start
 
@@ -26,6 +26,6 @@ Automated core and isolated Playwright fixture tests. Public frontend assets wer
 
 The browser is kept open without refresh/reload/recovery loops. Disconnects pause work. Old messages and crashed tasks are not automatically replayed. Text only; no attachments or in-task progress streaming yet.
 
-Future [rescue channel](docs/rescue.md): fixed authenticated URL for status and explicit recovery, once domain and login flow are supplied. No public QR endpoints.
+[Rescue status channel](docs/rescue.md): optional Cloudflare Worker + D1 + Access deployment, independent device heartbeat, and recovery confirmation after manual login. Remote login and QR endpoints are not implemented.
 
 Private data stays outside the repo under `~/.local/share/wechat-agent/`. Never publish browser profiles, transcripts, tokens or credentials. Full-permission agents can affect the whole computer; this project is not a sandbox. Unofficial project, not affiliated with Tencent, Anthropic, OpenAI or xAI.

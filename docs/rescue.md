@@ -1,9 +1,15 @@
-# Future fixed-URL rescue channel
+# Authenticated rescue status channel
 
-Not implemented or deployed in v0.1. The runtime only writes local `health.json` with connection state and timestamp; nobody is notified remotely when WeChat drops.
+The optional Cloudflare Worker + D1 + Access stack and independent macOS heartbeat are managed in this repository. See [deployment and operations](runbook/wechat-rescue.md).
 
-A future user-supplied domain can host an authenticated status/rescue page. Do not publish an unauthenticated QR code or browser debugging port. Require owner authentication, short-lived explicit login attempts, TLS, expiry, CSRF protection and rate limits. Show stale heartbeat distinctly from a confirmed logout. Keep recovery separate from the task executor and pause task intake during reauthentication.
+The current deployment is https://wechat-rescue.critdeck.com. It shows device freshness, observed WeChat state, and recovery confirmation after manual login. Remote login, QR display, browser control, and automated recovery are not implemented.
 
-A QR displayed on the same phone cannot necessarily be scanned with that phone; test the exact WeChat flow and provide a second-screen path. Do not promise login recovery until this has been verified. Recovery navigation must be explicit, never a periodic refresh of a healthy session.
+The heartbeat currently reads the existing Zhumi `state.json` on work-mac-joey; it is not an adapter for this repository runtime’s `health.json`. Other installations must supply a compatible observation source before claiming live monitoring.
 
-Pending: domain, hosting/access choice, owner authentication, and verified account-compatible scan flow. This phase does not export QR codes from the current session.
+## Migration provenance
+
+Migrated from joeeeeey/ai-relays PR #30, commits `f25a6234723f513f55300e281cc90143f5636612` and `e3e939c0ee81c2ebcfe56d3d229eb81a15cafc53`. This repository is now the source of truth for rescue code and IaC. Cloud resource names and runtime script contents are preserved; no resource recreation or browser operation is needed.
+
+Credentials remain external. Always pass `--credentials /stable/private/path/to/cloudflare.env.sops`; do not copy credentials into this repository. The existing independent heartbeat may continue using its original stable encrypted credential path until credentials are relocated separately.
+
+Run `npm test`, `python3 -m unittest discover -s scripts -p 'test_wechat_rescue*.py'`, and the skill validator. Owner email OTP login and real manual WeChat logout/login remain live acceptance checks.

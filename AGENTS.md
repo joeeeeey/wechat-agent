@@ -5,4 +5,4 @@ Never operate an existing user's WeChat browser while developing or testing.
 Use isolated local DOM fixtures. Keep login state, QR codes, credentials and
 transcripts outside the repo. Do not add automatic reload/recovery/replay loops.
 Run npm test and the skill validator for relevant changes. Report live-test gaps.
-The future rescue channel must be authenticated; it is not implemented yet.
+The rescue status channel must remain authenticated. See docs/rescue.md; remote login recovery is not implemented.

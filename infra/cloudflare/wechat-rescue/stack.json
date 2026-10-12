@@ -1,0 +1,9 @@
+{
+  "name": "wechat-rescue",
+  "hostname": "wechat-rescue.critdeck.com",
+  "zone": "critdeck.com",
+  "database": "wechat-rescue",
+  "access_team": "critdeck-rescue",
+  "session_duration": "1h",
+  "allowed_emails": ["joeeey9303@gmail.com", "513358386@qq.com"]
+}
