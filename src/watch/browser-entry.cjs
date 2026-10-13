@@ -15,5 +15,7 @@ process.umask(0o077);
  await page.goto('https://filehelper.weixin.qq.com/',{waitUntil:'domcontentloaded'});
  await page.bringToFront();
  await start(page);
+ try{await require('./rescue.cjs').startRescue(page);}
+ catch{atomic(path.join(root,'rescue-health.json'),{enabled:true,status:'configuration_error',lastCheckAt:new Date().toISOString()});}
  atomic(path.join(root,'browser-process.json'),{pid:process.pid,entry:__filename,startedAt:new Date().toISOString()});
 })().catch(e=>{console.error(e.message);process.exit(1);});

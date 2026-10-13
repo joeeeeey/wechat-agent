@@ -84,7 +84,7 @@ export async function setup(){
   c.execution.enabled=await yes('允许通过此微信入口执行你明确请求的任务？',false);
   validate(c);fs.mkdirSync(c.workspace,{recursive:true,mode:0o700});atomic(configPath,c);
   for(const name of installed)if(await yes(`安装 wechat-agent skill 到 ${name}？`,name===backend))installSkill(name);
-  c.rescue.enabled=await yes('配置可选 Cloudflare 救援/状态页？默认无需云服务；不包含自动扫码',false);
+  c.rescue.enabled=await yes('配置可选 Cloudflare 救援/状态页？默认无需云服务',false);
   if(c.rescue.enabled){
    const env=path.join(home,'rescue.env');
    if(!fs.existsSync(env)){
@@ -96,11 +96,17 @@ export async function setup(){
    run('open',['-e',env]);
    await ask('保存后按回车继续（留空配置可以稍后再做）');
    c.rescue.envFile=env;
+   c.rescue.qrEnabled=await yes('启用救援页显示本机微信登录二维码，并在扫码成功后恢复接收新任务？',false);
+   let rescueEnv=fs.readFileSync(env,'utf8');
+   rescueEnv=rescueEnv.replace(/^WECHAT_RESCUE_QR_ENABLED=.*$/gm,'');
+   fs.writeFileSync(env,rescueEnv+'\nWECHAT_RESCUE_QR_ENABLED='+String(c.rescue.qrEnabled)+'\n',{mode:0o600});
    const python=executable('python3');
    if(python&&await yes('现在校验配置并查看只读部署计划？',false)){
     run(python,['scripts/wechat_rescue_apply.py','--env-file',env]);
     if(await yes('按刚才计划创建/更新 Cloudflare 资源？',false)){
      run(python,['scripts/wechat_rescue_apply.py','--env-file',env,'--apply']);
+     // Runtime needs the same D1 identity as the deployed site; keep it private.
+     run(python,['scripts/wechat_rescue_runtime_config.py','--env-file',env]);
      if(await yes('安装本机状态心跳 LaunchAgent？',false))run(python,['scripts/wechat_rescue_install.py','--env-file',env,'--apply']);
     }
    }else console.log('救援配置已保留，尚未部署。稍后按 docs/runbook/wechat-rescue.md 完成；本地微信不受影响。');

@@ -98,6 +98,14 @@ test('bridge baselines old commands, associates new files, and treats forwarded 
   assert.equal(collected.collectionCount,1);
   await append('小咪收集');await call('requests');await append('材料');await append('done');
   assert.equal((await call('requests')).result.at(-1).collectionCount,1,'New alias and end marker apply to subsequent batch');
+  const gate=createRequire(import.meta.url)('../src/watch/rescue-intake.cjs');
+  const beforePause=globalThis.zhumiBridge.state.requests.length;
+  gate.pause('rescue-fixture');await append('/ai config set 助手名 不应执行');await append('小咪执行暂停期间的消息');await call('requests');
+  assert.equal(globalThis.zhumiBridge.state.requests.length,beforePause);assert.equal(config.readConfig().assistant.displayName,'小咪');
+  assert.equal((await call('rescue_resume',{attemptId:'wrong'})).ok,false);
+  assert.equal((await call('rescue_resume',{attemptId:'rescue-fixture'})).ok,true);
+  await call('requests');assert.equal(globalThis.zhumiBridge.state.requests.length,beforePause,'Paused history is not replayed');
+  await append('/ai 新任务');await call('requests');assert.equal(globalThis.zhumiBridge.state.requests.length,beforePause+1);
  }finally{
   await new Promise(resolve=>globalThis.zhumiBridge.server.close(resolve));delete globalThis.zhumiBridge;
   await browser.close();await fs.rm(root,{recursive:true,force:true});

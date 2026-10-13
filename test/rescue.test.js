@@ -31,14 +31,15 @@ test('disabled feature, cross-origin, missing intent, oversized and private-key 
  assert.equal((await api(DB,'POST',{publicKey:{...publicKey,d:'private'}})).status,400);
  assert.equal(await current(DB),null);
 });
-test('only fresh confirmed login-required observations allow a request',async()=>{
- for(const state of ['online','offline','unknown','disconnected']){
+test('fresh online or login-required observations allow explicit QR generation',async()=>{
+ for(const state of ['offline','unknown','disconnected']){
   const DB=database();heartbeat(DB,state);assert.equal((await api(DB)).status,409);
  }
  for(const time of [new Date(Date.now()-100000).toISOString(),new Date(Date.now()+100000).toISOString(),'bad']){
   const DB=database();heartbeat(DB,'login_required',time);assert.equal((await api(DB)).status,409);
  }
  assert.equal((await api(database())).status,409);
+ const online=database();heartbeat(online,'online');assert.equal((await api(online)).status,201);
 });
 test('concurrent requests admit exactly one; cancel is owner/id-bound; cooldown survives cancellation',async()=>{
  const DB=database();heartbeat(DB);
@@ -95,15 +96,18 @@ test('isolated DOM: capture only dummy square, encrypt, await observed online, c
   await page.setContent('<div id="login"><div id="qr" style="width:128px;height:128px;background:#246"></div></div>');
   const screen=new ExistingLoginScreen(page,{online:'#chat',login:'#login',qr:'#qr'});
   const {DB,row}=await setup();let paused=false;
-  const device=new RescueDevice({DB,screen,intake:{pause:async()=>{paused=true;},isPaused:async()=>paused}});
+  const device=new RescueDevice({DB,screen,intake:{pause:async()=>{paused=true;},isPaused:async()=>paused,resume:async()=>{paused=false;}}});
   await Promise.all([device.tick(),device.tick()]);
   const ready=await current(DB);assert.equal(ready.state,'awaiting_scan');assert.equal(paused,true);
   const bytes=await openPNG(JSON.parse(ready.envelope),pair.privateKey,row.id);assert.equal(bytes[0],137);
+  await device.tick();assert.equal((await current(DB)).envelope,ready.envelope,'Unchanged QR is not republished');
+  await page.locator('#qr').evaluate(n=>n.style.background='#642');await device.tick();
+  assert.notEqual((await current(DB)).envelope,ready.envelope,'Changed QR updates the same rescue attempt');
   await page.locator('#login').evaluate(n=>n.remove());await device.tick();
   assert.equal((await current(DB)).state,'awaiting_scan'); // QR absence alone is not success
   await page.setContent('<textarea id="chat"></textarea>');await device.tick();
   assert.equal((await current(DB)).state,'completed');assert.equal((await current(DB)).envelope,null);
-  assert.equal(paused,true); // no automatic resume or replay
+  assert.equal(paused,false); // verified online resumes only through the supplied intake adapter
  }finally{await browser.close();}
 });
 test('D1 adapter uses bounded authenticated POST and redacts API errors',async()=>{
@@ -137,10 +141,26 @@ test('isolated rescue web UI: initiate, decrypt dummy image, cancel and hide it'
   const envelope=await sealPNG(dummy,JSON.parse(row.public_key),row.id);
   await transition(DB,row.id,'preparing','awaiting_scan',JSON.stringify(envelope));
   await page.waitForFunction(()=>{const img=document.querySelector('#rescue-qr');return !img.hidden && img.naturalWidth===1;});
+  const firstURL=await page.locator('#rescue-qr').getAttribute('src');
+  const changed=await sealPNG(dummy,JSON.parse(row.public_key),row.id);
+  await transition(DB,row.id,'awaiting_scan','awaiting_scan',JSON.stringify(changed));
+  await page.waitForFunction(first=>document.querySelector('#rescue-qr').src!==first,firstURL);
   await page.locator('#rescue-cancel').click();
   await page.waitForFunction(()=>document.querySelector('#rescue-state').textContent==='已取消救援');
   assert.equal(await page.locator('#rescue-qr').isVisible(),false);
   assert.equal((await current(DB)).state,'cancelled');assert.equal((await current(DB)).envelope,null);assert.deepEqual(errors,[]);
+ }finally{await browser.close();}
+});
+
+test('expired login QR refresh uses only its visible control, never page navigation',async()=>{
+ const browser=await chromium.launch({headless:true,channel:'chromium'});
+ try{
+  const page=await browser.newPage();
+  await page.setContent('<div id="login"><div id="qr" style="width:128px;height:128px;background:#246"></div><button id="refresh">刷新</button></div>');
+  await page.locator('#refresh').evaluate(e=>e.onclick=()=>e.remove());
+  const screen=new ExistingLoginScreen(page,{online:'#chat',login:'#login',qr:'#qr',refresh:'#refresh'});
+  let navigations=0;page.on('framenavigated',()=>navigations++);
+  const bytes=await screen.qrPNG();assert.equal(bytes[0],137);assert.equal(await page.locator('#refresh').count(),0);assert.equal(navigations,0);
  }finally{await browser.close();}
 });
 

@@ -59,17 +59,17 @@ export async function routeRescue(request, env, owner, headers) {
   try {await crypto.subtle.importKey('jwk',key,{name:'RSA-OAEP',hash:'SHA-256'},false,['encrypt']);}
   catch{return reply({error:'Invalid public key'},400);}
   const now=Date.now(), id=crypto.randomUUID();
-  // One atomic statement checks fresh observed logout and enforces a 5-minute cooldown.
+  // One atomic statement checks fresh observed logout and prevents concurrent attempts.
   const row=await env.DB.prepare(`INSERT INTO rescue_attempt(device_id,id,owner,state,created_at,expires_at,public_key,envelope)
     SELECT ?,?,?,'requested',?,?,?,NULL WHERE EXISTS (SELECT 1 FROM device_heartbeat
-      WHERE device_id=? AND connection_state='login_required'
+      WHERE device_id=? AND connection_state IN ('login_required','online')
       AND julianday(received_at) BETWEEN julianday(?) - 90.0/86400 AND julianday(?) + 5.0/86400
       AND julianday(observed_at) BETWEEN julianday(?) - 90.0/86400 AND julianday(?) + 5.0/86400)
     ON CONFLICT(device_id) DO UPDATE SET id=excluded.id,owner=excluded.owner,state=excluded.state,
       created_at=excluded.created_at,expires_at=excluded.expires_at,public_key=excluded.public_key,envelope=NULL
     WHERE rescue_attempt.created_at<=? AND rescue_attempt.state NOT IN ${ACTIVE} RETURNING *`)
-    .bind(device,id,owner,now,now+TTL,JSON.stringify(key),device,...Array(4).fill(new Date(now).toISOString()),now-300000).first();
-  return row?reply(visible(row,owner),201):reply({error:'Requires fresh login-required state, no active attempt, and five-minute cooldown'},409);
+    .bind(device,id,owner,now,now+TTL,JSON.stringify(key),device,...Array(4).fill(new Date(now).toISOString()),now-5000).first();
+  return row?reply(visible(row,owner),201):reply({error:'Requires a fresh reachable WeChat page, no active attempt, and five-second cooldown'},409);
 }
 const b64=bytes=>btoa(String.fromCharCode(...bytes));
 const unb64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));

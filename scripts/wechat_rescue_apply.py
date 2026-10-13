@@ -156,8 +156,7 @@ def reconcile(cf, spec, apply=False):
                     {'type': 'plain_text', 'name': 'ACCESS_AUD', 'text': app['aud']},
                     {'type': 'plain_text', 'name': 'ALLOWED_EMAILS', 'text': json.dumps(spec['allowed_emails'])},
                 ]}
-    # Remote QR remains disabled until live adapter/intake acceptance is complete.
-    metadata['bindings'].append({'type': 'plain_text', 'name': 'RESCUE_QR_ENABLED', 'text': 'false'})
+    metadata['bindings'].append({'type': 'plain_text', 'name': 'RESCUE_QR_ENABLED', 'text': 'true' if spec.get('qr_enabled') else 'false'})
     body, kind = multipart(metadata, (STACK / 'worker.mjs').read_text(),
                            {name: (STACK / name).read_text() for name in ('rescue.mjs', 'rescue-ui.mjs')})
     cf.account_call('PUT', '/workers/scripts/' + spec['name'], body, kind)

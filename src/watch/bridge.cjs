@@ -8,6 +8,7 @@ const {collectionIntent,isEndMarker,stripAlias,startToken,DEFAULT_MARKERS}=requi
 const {semanticIntent}=require('./semantic-intent.cjs');
 const {root,configPath,readConfig}=require('./config.cjs');
 const {parseSystem,HELP,describe,safeView,updateConfig}=require('./system-config.cjs');
+const rescueIntake=require('./rescue-intake.cjs');
 const socket=path.join(root,'control.sock');
 const statePath=path.join(root,'state.json');
 const now=()=>new Date().toISOString();
@@ -53,6 +54,11 @@ exports.start=async function(page,{preservePage=false}={}) {
       if(oldConnection==='login_required'&&state.connection==='online'){state.coverage='uncertain-after-login';if(state.collection)state.collection.coverageGap=true;}
       if(snapshot.loggedIn&&(!state.loginDetectedAt||oldConnection==='login_required'))state.loginDetectedAt=now();
       if(!snapshot.loggedIn){save();return;}
+      if(rescueIntake.read().paused){
+        for(const row of snapshot.rows)seen.add(row.domId);
+        if(state.collection)state.collection.coverageGap=true;
+        save();return;
+      }
       let semanticUsed=false;
       for(const row of snapshot.rows){
         if(seen.has(row.domId))continue;
@@ -191,6 +197,14 @@ exports.start=async function(page,{preservePage=false}={}) {
         if(command.action==='status'){await inspect();result={deviceId:state.deviceId,connection:state.connection,lastObservedAt:state.lastObservedAt,coverage:state.coverage,loginDetectedAt:state.loginDetectedAt,collection:state.collection?{requestId:state.collection.requestId,count:state.collection.entries.length,endMarkers:state.collection.endMarkers}:null,requests:state.requests.map(({id,status,receivedAt,acknowledgement})=>({id,status,receivedAt,acknowledgement})),navigationEvents:state.navigationEvents,dispatchMode:state.dispatchMode};}
         else if(command.action==='requests'){await inspect();result=state.requests.filter(r=>!['completed','cancelled'].includes(r.status));}
         else if(command.action==='materials'){result=state.materials.filter(m=>m.sessionEpoch===state.sessionEpoch);}
+        else if(command.action==='rescue_resume'){
+          if(rescueIntake.read().attemptId!==command.attemptId)throw Error('Rescue attempt changed');
+          const snapshot=await read();if(!snapshot.loggedIn)throw Error('Login not observed');
+          for(const row of snapshot.rows)seen.add(row.domId);
+          if(state.collection)state.collection.coverageGap=true;
+          state.connection='online';state.loginDetectedAt=now();state.coverage='uncertain-after-login';
+          rescueIntake.resume(command.attemptId);save();result={resumed:true,oldMessagesReplayed:false};
+        }
         else if(command.action==='config'){
           if(command.operation==='get')result=safeView();
           else if(command.operation==='set'){
