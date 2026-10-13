@@ -1,0 +1,1 @@
+{"type":"object","properties":{"intent":{"type":"string","enum":["start_collection","normal_task","uncertain"]},"confidence":{"type":"number"}},"required":["intent","confidence"],"additionalProperties":false}

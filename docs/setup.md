@@ -1,5 +1,27 @@
 # Install and run
 
+## Current macOS guided setup
+
+Use the one-command installer in [README](../README.md), or run `npm ci` and
+`npm run setup` from a checkout. It selects an installed/authenticated Codex or
+Claude CLI, saves private watch configuration, optionally installs the skill and
+prepares rescue configuration, then opens a dedicated browser for a local scan.
+See [watch configuration](watch.md) for markers, file handling, permissions and
+`npm run watch -- start|status|stop|restart`.
+
+For existing installations, stop the old controller and close its dedicated
+browser before rerunning the bootstrap. It refuses to replace running code.
+Back up private state locally, never in Git. Legacy `npm start` state is not
+automatically migrated. To reuse an existing Codex native thread, first stop its
+current owner, use the same workspace, and set `harness.threadId` before the first
+watch start. Once watch records a native session, that metadata takes precedence.
+Never concurrently `codex resume` a thread owned by the watch app-server.
+
+## Legacy serial prototype
+
+The instructions below describe `npm start`, kept for compatibility. They do not
+describe the new persistent watch, attachments, or collection mode.
+
 Prerequisites: Node.js 22+, a desktop session, and a WeChat account permitted to use File Helper web. The machine must remain awake. This is an unofficial prototype and depends on Tencent's page structure/account availability.
 
 ```sh
