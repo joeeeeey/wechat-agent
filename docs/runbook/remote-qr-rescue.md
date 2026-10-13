@@ -52,7 +52,9 @@ caller. Do not restart a healthy browser merely to inspect the status page.
    discards the staged page and retains the current connection. The QR is cleared; intake resumes after
    baselining messages visible during recovery. Collection gaps are marked.
 
-Display attempts last at most two minutes; after expiry the owner can request a
+The visible owner page renews its display lease every 30 seconds. QR changes
+continue while it stays visible; leaving/backgrounding the page stops renewal
+and the lease expires within two minutes. After expiry the owner can request a
 new one. Only one attempt is active per device and requests have a five-second
 cooldown. Cancel, expiration, page backgrounding or API failure hides the image.
 Browser keys stay in memory and are lost on page exit. Authentication failure
