@@ -6,6 +6,6 @@ For authenticated off-device status monitoring, opt in with a private `.env` fil
 
 The heartbeat accepts this repository's `health.json` (`state`, `updatedAt`) and compatible external observations (`deviceId`, `connection`, `lastObservedAt`). A stale/missing source reports unknown. A generic disconnected observation is not proof of a login screen.
 
-Remote QR rescue remains a separate disabled prototype: [requirements and acceptance](runbook/remote-qr-rescue.md). Setting `WECHAT_RESCUE_ENABLED=true` deploys authenticated status monitoring, not automatic relogin or an operational QR adapter. The apply script keeps `RESCUE_QR_ENABLED=false`.
+QR relay is optional. Set `WECHAT_RESCUE_QR_ENABLED=true` in the private environment and `rescue.qrEnabled: true` plus `rescue.envFile` in watch config. The installed browser adapter uses the existing page, publishes encrypted QR updates only for an authenticated owner request, and resumes new-message intake after observing login. Status monitoring alone does not enable QR capture. See [integration and acceptance](runbook/remote-qr-rescue.md).
 
 Turning the local flag off prevents subsequent deployment/heartbeat/install commands from using Cloudflare; it does not delete existing resources, remove an installed job or change an already-deployed Worker. Stop an existing heartbeat explicitly if needed. This configuration change does not remove data from previously published Git commits or PR history.

@@ -70,7 +70,10 @@ def spec(values):
     database = values.get('WECHAT_RESCUE_DATABASE_NAME', 'wechat-rescue')
     if any(not re.fullmatch(r'[a-z0-9][a-z0-9-]{0,62}', v) for v in [team, name, database]):
         raise ConfigError('Invalid rescue Worker, database or Access team name')
-    return dict(name=name, hostname=hostname, zone=zone, database=database,
+    qr = values.get('WECHAT_RESCUE_QR_ENABLED', 'false').lower()
+    if qr not in ('true', 'false'):
+        raise ConfigError('WECHAT_RESCUE_QR_ENABLED must be true or false')
+    return dict(name=name, hostname=hostname, zone=zone, database=database, qr_enabled=qr == 'true',
                 access_team=team, session_duration='1h', allowed_emails=list(dict.fromkeys(emails)),
                 device_id=device_id(values))
 

@@ -25,9 +25,18 @@ test('configured command backend runs a completed batch once and does not react 
   else result={};res.end(JSON.stringify({ok:true,result}));
  });});
  await new Promise(r=>server.listen(path.join(root,'control.sock'),r));
+ await fs.writeFile(path.join(root,'rescue-intake.json'),JSON.stringify({paused:true,attemptId:'persisted-rescue'}));
  const child=spawn(process.execPath,['src/watch/supervisor.cjs'],{env:{...process.env,WECHAT_AGENT_HOME:home},stdio:['ignore','pipe','pipe']});
  let diagnostics='';child.stderr.on('data',c=>diagnostics+=c);child.stdout.resume();
  try{
+  for(let n=0;n<40;n++){
+   let snapshot={};try{snapshot=JSON.parse(await fs.readFile(path.join(root,'supervisor.json'),'utf8'));}catch{}
+   if(snapshot.rescuePause?.attemptId==='persisted-rescue')break;
+   await new Promise(r=>setTimeout(r,100));
+  }
+  assert.equal(received.length,0,'A persisted rescue pause blocks dispatch after process startup');
+  assert.equal(JSON.parse(await fs.readFile(path.join(root,'supervisor.json'),'utf8')).rescuePause.attemptId,'persisted-rescue');
+  await fs.writeFile(path.join(root,'rescue-intake.json'),JSON.stringify({paused:false,attemptId:'persisted-rescue'}));
   for(let n=0;n<100&&!received.some(r=>r.phase==='completed');n++)await new Promise(r=>setTimeout(r,100));
   assert.equal(received.find(r=>r.phase==='completed')?.body,'batch read',diagnostics);
   await new Promise(r=>setTimeout(r,1100));assert.equal(received.filter(r=>r.phase==='completed').length,1);

@@ -47,4 +47,4 @@ Preserve original Worker/database names, domain, Access tenant and device ID in 
 
 A prior owner-specific launchd label is not silently replaced: stop that exact old job explicitly before installing a new generic label to avoid duplicate heartbeat publishers. Updating source alone does not alter an installed job or the live browser.
 
-To stop a job installed by this version: `launchctl bootout gui/$(id -u)/com.wechat-agent.rescue-heartbeat`, then remove that job's plist if desired. Keep D1/Access data. Setting the flag false is a no-op, not an uninstall or cloud delete operation. Remote QR stays disabled pending its separate live acceptance requirements.
+To stop a job installed by this version: `launchctl bootout gui/$(id -u)/com.wechat-agent.rescue-heartbeat`, then remove that job's plist if desired. Keep D1/Access data. Setting the flag false is a no-op, not an uninstall or cloud delete operation. Remote QR is opt-in through WECHAT_RESCUE_QR_ENABLED and the local browser adapter; see remote-qr-rescue.md.

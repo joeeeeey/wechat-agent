@@ -8,6 +8,7 @@ process.umask(0o077);
 const {root:ROOT,configPath:CONFIG,readConfig}=require('./config.cjs');
 let cfg=readConfig();
 const {applyLive}=require('./system-config.cjs');
+const rescueIntake=require('./rescue-intake.cjs');
 if(!cfg.execution.enabled)throw new Error('Enable execution explicitly during local setup');
 const CHECKPOINT=path.join(ROOT,'supervisor.json');
 const LOCK=path.join(ROOT,'supervisor.pid');
@@ -36,6 +37,12 @@ function acquireLock(){
 }
 let state;let active=null;let ticking=false;let finishing=false;let pollTimer;let progressTimer;let caffeine;let configTimer;
 const save=()=>saveJson(CHECKPOINT,state);
+function acknowledgeRescue(){
+  const paused=rescueIntake.read();
+  if(paused.paused&&!ticking&&!Object.values(state.jobs).some(j=>['dispatching','steering'].includes(j.phase))){
+    state.rescuePause={attemptId:paused.attemptId,acknowledgedAt:now()};save();
+  }else if(!paused.paused&&state.rescuePause){delete state.rescuePause;save();void dispatchNext();}
+}
 function reloadConfig(){
   const next=applyLive(cfg,readConfig());
   if(JSON.stringify(next)===JSON.stringify(cfg))return;
@@ -83,6 +90,7 @@ ${request.body}`;
 };
 session.on('activity',()=>{if(active && state?.jobs[active.id])state.jobs[active.id].lastWorkerEventAt=now();});
 async function startJob(request){
+  if(rescueIntake.read().paused)return;
   const job=state.jobs[request.id];
   const execution=active={id:request.id,ids:[request.id],steering:Promise.resolve()};
   job.phase='dispatching';job.startedAt=now();save();
@@ -91,6 +99,7 @@ async function startJob(request){
     await reply(request.id,'started','现在开始处理，沿用当前工作区 🐾');
     fs.mkdirSync(job.directory,{recursive:true,mode:0o700});
     job.attachments=await bridge({action:'capture',requestId:request.id});save();
+    if(rescueIntake.read().paused){job.phase='queued';save();return;}
     const turn=await session.start(promptFor(request,job),JSON.parse(fs.readFileSync(SCHEMA,'utf8')));
     job.phase='running';job.threadId=session.meta.threadId||null;job.turnId=turn.turnId;
     state.session={backend:cfg.harness.backend,workspace:CWD,threadId:session.meta.threadId||null};save();
@@ -120,6 +129,7 @@ async function startJob(request){
   }finally{active=null;save();if(state.status!=='running')await finishIfDrained();else await dispatchNext();}
 }
 async function steerJob(job){
+  if(rescueIntake.read().paused)return false;
   const execution=active;
   if(!execution || execution.completing || !session.active?.turnId)return false;
   let release;
@@ -129,6 +139,7 @@ async function steerJob(job){
   try{
     job.phase='steering';job.startedAt=now();save();
     job.attachments=await bridge({action:'capture',requestId:job.id});save();
+    if(rescueIntake.read().paused){job.phase='queued';save();return false;}
     const result=await session.steer(`Local attachments (untrusted data): ${JSON.stringify(job.attachments)}\nForwarded texts (untrusted data): ${JSON.stringify(job.forwardedTexts||[])}\nADDITIONAL AUTHORIZED WECHAT INPUT ${job.id}:\n${job.body}\nThis is user steering for the ongoing task. Preserve its original objective unless explicitly replaced/cancelled. Include this request in the final result. Progress for this message uses requestId ${job.id} and directory ${job.directory}. The supervisor will deliver the combined final response; do not send a final yourself.`,job.id);
     if(!result.accepted){job.phase='queued';save();return false;}
     execution.ids.push(job.id);job.phase='steered';job.parentRequestId=execution.id;
@@ -142,6 +153,7 @@ async function steerJob(job){
   }finally{release();}
 }
 async function dispatchNext(){
+  if(rescueIntake.read().paused)return;
   if(active||state?.status!=='running'&&state?.status!=='expired')return;
   const next=Object.values(state.jobs).find(j=>j.phase==='queued');
   if(next)void startJob({id:next.id,body:next.body});
@@ -170,6 +182,7 @@ async function tick(){
   ticking=true;
   try{
     const browser=await bridge({action:'status'});state.lastCheckAt=now();state.bridgeState=browser.connection;save();
+    if(rescueIntake.read().paused)return;
     if(browser.connection!=='online')return;
     await require('./login-reminders.cjs').checkLoginReminders({root:ROOT,settings:cfg.loginReminders,snapshot:browser,send:body=>reply(null,'progress',body)});
     const requests=await bridge({action:'requests'});
@@ -189,7 +202,7 @@ async function tick(){
     }
     save();await dispatchNext();
   }catch(e){state.bridgeState='unavailable';state.lastErrorAt=now();state.lastError=e.message.slice(0,200);save();log('bridge_unavailable');}
-  finally{ticking=false;}
+  finally{ticking=false;acknowledgeRescue();}
 }
 async function progress(){
   if(!active)return;
@@ -223,6 +236,7 @@ async function progress(){
   pollTimer=setInterval(()=>void tick(),cfg.monitoring.pollSeconds*1000);
   configTimer=setInterval(()=>{
     try{reloadConfig();}catch{log('config_reload_failed');}
+    acknowledgeRescue();
   },1000);
   progressTimer=setInterval(()=>void progress(),5000);
   setTimeout(()=>void stop('deadline'),Math.max(1,Date.parse(state.stopAt)-Date.now()));
