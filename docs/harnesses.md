@@ -1,5 +1,12 @@
 # Harness contract
 
+The new `npm run setup` / `npm run watch` path includes Codex app-server and Claude
+JSON-print adapters; see [watch configuration](watch.md). The stdin/stdout contract
+below is still available as watch's `backend: "command"` and in legacy `npm start`.
+Codex preserves its native thread and supports active-turn steering; Claude resumes
+its saved session and serializes new tasks. No adapter silently grants full-machine
+permissions or bypasses Claude's local permission settings.
+
 `config.json` lives outside the repository at `~/.local/share/wechat-agent/` (override with `WECHAT_AGENT_HOME`). Set an absolute executable path, an argv array, an absolute working directory and optionally `timeoutMs`. Execution uses `spawn`, never a shell command assembled from chat text.
 
 The executable receives a complete prompt on stdin and writes only the final human-facing text to stdout. Nonzero exit means failure. Diagnostics go to stderr and are drained without forwarding. A timeout kills the process group on POSIX; detached grandchildren or Windows subprocess trees may need manual cleanup. This first version waits for completion and does not stream progress or support cancellation of a running task.

@@ -10,7 +10,9 @@
   "scripts": {
     "start": "node src/cli.js",
     "test": "node --test",
-    "test:browser": "node --test test/browser.test.js"
+    "test:browser": "node --test test/browser.test.js",
+    "setup": "node scripts/setup.mjs",
+    "watch": "node src/watch/cli.cjs"
   },
   "dependencies": {
     "playwright": "^1.56.0"
