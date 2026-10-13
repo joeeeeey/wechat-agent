@@ -33,7 +33,9 @@ caller. Do not restart a healthy browser merely to inspect the status page.
 ## Owner flow
 
 1. Open the rescue site and complete its email login.
-2. When WeChat needs login, click “显示登录二维码”. The Mac reads the existing
+2. Click “生成登录二维码”, including while WeChat is online. For an online
+   session the Mac prepares a separate headless login page, preserving the current
+   page until the new login succeeds. For an already-logged-out session it reads the existing
    `.qrcode img.qrcode-img` inside `.login-scan__panel`; a visible chat editor
    always means online and cannot trigger QR capture.
 3. The browser process persists an intake pause; a running supervisor acknowledges
@@ -45,7 +47,9 @@ caller. Do not restart a healthy browser merely to inspect the status page.
    at most once per 30 seconds during this owner-requested attempt. No page reload,
    cookie export, direct login-protocol emulation or background login is used.
 5. Scan from WeChat on a second screen and confirm on the phone. The live Mac's
-   chat editor is the success signal. The QR is cleared; intake resumes after
+   chat editor is the success signal. A staged login then replaces the old browser
+   connection; the same AI thread/workspace and request IDs remain. Cancellation
+   discards the staged page and retains the current connection. The QR is cleared; intake resumes after
    baselining messages visible during recovery. Collection gaps are marked.
 
 Display attempts last at most two minutes; after expiry the owner can request a

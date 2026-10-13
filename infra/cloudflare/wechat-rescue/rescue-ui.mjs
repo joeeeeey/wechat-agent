@@ -1,5 +1,5 @@
 import {openPNG} from './rescue.mjs';
-export const rescueHTML=`<section><h2>微信扫码恢复</h2><p>微信掉线后，点击下方按钮获取这台电脑当前的登录二维码。二维码变化时会自动更新，最多展示两分钟；请用手机微信扫码并确认。登录成功后自动恢复接收新任务，不重复执行旧消息。</p><button id="rescue-start">显示登录二维码</button> <button id="rescue-cancel" disabled>取消</button><p id="rescue-state" aria-live="polite">尚未发起</p><img id="rescue-qr" hidden alt="本次微信登录二维码" width="256" height="256"></section><script src="/rescue.js" defer></script>`;
+export const rescueHTML=`<section><h2>微信扫码恢复</h2><p>点击生成这台电脑的登录二维码；在线时也可以测试重新登录。生成期间暂停接收新任务，扫码成功后切换连接并自动恢复。二维码变化时自动更新，最多展示两分钟。请用手机微信扫码并确认。</p><button id="rescue-start">生成登录二维码</button> <button id="rescue-cancel" disabled>取消</button><p id="rescue-state" aria-live="polite">尚未发起</p><img id="rescue-qr" hidden alt="本次微信登录二维码" width="256" height="256"></section><script src="/rescue.js" defer></script>`;
 export const rescueClient=`(()=>{
 const unb64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
 const openPNG=${openPNG.toString()};
@@ -35,7 +35,7 @@ start.addEventListener('click',async()=>{
   key=pair.privateKey;attempt=s.id;cancel.disabled=false;
   deadline=setTimeout(()=>{if(epoch===generation){stop();status.textContent='二维码已过期';}},Math.max(0,s.expiresAt-Date.now()));
   await poll(epoch);
- }catch{if(epoch===generation){stop();status.textContent='暂不能获取二维码：请确认电脑在线且微信需要登录；已有登录正常时无需救援。';}}
+ }catch{if(epoch===generation){stop();status.textContent='暂不能生成二维码：请确认电脑和救援连接在线，没有其他进行中的扫码请求，稍后重试。';}}
 });
 cancel.addEventListener('click',async()=>{const id=attempt;stop();start.disabled=true;try{await api('/api/rescue/cancel',{id});status.textContent='已取消救援';}catch{status.textContent='二维码已隐藏；服务端取消未确认，将按时过期。';}finally{start.disabled=false;}});
 document.addEventListener('visibilitychange',()=>{if(document.hidden)clearImage();else if(attempt){clearTimeout(timer);poll(generation);}});

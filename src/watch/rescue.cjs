@@ -27,9 +27,12 @@ async function startRescue(page){
  const cfg=readConfig();if(!cfg.rescue?.qrEnabled)return null;
  const auth=credentials(cfg.rescue.envFile);if(auth.deviceId!==cfg.device.id)throw Error('Rescue device identity mismatch');
  const {RescueD1}=await import('../rescue-d1.js');
- const {RescueDevice,ExistingLoginScreen}=await import('../rescue-device.js');
+ const moduleFile=path.resolve(__dirname,'../rescue-device.js');
+ const {RescueDevice,ExistingLoginScreen}=await import(require('node:url').pathToFileURL(moduleFile).href+'?version='+fs.statSync(moduleFile).mtimeMs);
+ const {current}=await import('../../infra/cloudflare/wechat-rescue/rescue.mjs');
  const DB=new RescueD1(auth);
- const screen=new ExistingLoginScreen(page,{online:'.page-logined textarea.chat-panel__input-container',login:'.login-scan__panel',qr:'.qrcode img.qrcode-img',refresh:'.qrcode .mask__refresh'});
+ const {RecoveryScreen}=require('./rescue-screen.cjs');
+ const screen=new RecoveryScreen(page,{ExistingLoginScreen,chromium:require('playwright').chromium,channel:cfg.browser?.channel||'chromium'});
  const intake={
   async pause(id){
    gate.pause(id);
@@ -42,23 +45,34 @@ async function startRescue(page){
    throw Error('Intake pause not acknowledged');
   },
   async isPaused(id){return gate.read().paused&&gate.read().attemptId===id;},
-  async resume(id){await call({action:'rescue_resume',attemptId:id});}
+  async resume(id){await screen.adopt();await call({action:'rescue_resume',attemptId:id});}
  };
  const device=new RescueDevice({DB,screen,intake,deviceId:cfg.device.id});
  let busy=false;
  const tick=async()=>{
-  if(busy||page.isClosed())return;busy=true;
+  if(busy||screen.page.isClosed())return;busy=true;
   try{
    const connection=await screen.state();
    atomic(path.join(root,'health.json'),{deviceId:cfg.device.id,connection,lastObservedAt:new Date().toISOString()});
+   await device.tick();
+   if(screen.staged){
+    const attempt=await current(DB,cfg.device.id);
+    if(!attempt||!['requested','preparing','awaiting_scan'].includes(attempt.state)){
+      if(await screen.state()==='online')await intake.resume(screen.staged.attemptId);
+      else await screen.discard();
+    }
+   }
    const paused=gate.read();
    if(paused.paused&&paused.attemptId&&await screen.state()==='online')await intake.resume(paused.attemptId);
-   await device.tick();
    atomic(path.join(root,'rescue-health.json'),{enabled:true,connection,lastCheckAt:new Date().toISOString(),intakePaused:gate.read().paused});
-  }catch{atomic(path.join(root,'rescue-health.json'),{enabled:true,status:'unavailable',lastCheckAt:new Date().toISOString(),intakePaused:gate.read().paused});}
+  }catch{
+   atomic(path.join(root,'rescue-health.json'),{enabled:true,status:'unavailable',lastCheckAt:new Date().toISOString(),intakePaused:gate.read().paused});
+   // Manual login may restore the existing page even during a cloud outage.
+   const paused=gate.read();if(!screen.staged&&paused.paused&&paused.attemptId&&await screen.state()==='online')await intake.resume(paused.attemptId).catch(()=>{});
+  }
   finally{busy=false;}
  };
  const timer=setInterval(()=>void tick(),5000);
- page.on('close',()=>clearInterval(timer));globalThis.wechatRescue={timer,tick};void tick();return globalThis.wechatRescue;
+ globalThis.wechatRescue={timer,tick,screen};void tick();return globalThis.wechatRescue;
 }
 module.exports={startRescue,dotenv};

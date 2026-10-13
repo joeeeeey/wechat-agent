@@ -31,14 +31,15 @@ test('disabled feature, cross-origin, missing intent, oversized and private-key 
  assert.equal((await api(DB,'POST',{publicKey:{...publicKey,d:'private'}})).status,400);
  assert.equal(await current(DB),null);
 });
-test('only fresh confirmed login-required observations allow a request',async()=>{
- for(const state of ['online','offline','unknown','disconnected']){
+test('fresh online or login-required observations allow explicit QR generation',async()=>{
+ for(const state of ['offline','unknown','disconnected']){
   const DB=database();heartbeat(DB,state);assert.equal((await api(DB)).status,409);
  }
  for(const time of [new Date(Date.now()-100000).toISOString(),new Date(Date.now()+100000).toISOString(),'bad']){
   const DB=database();heartbeat(DB,'login_required',time);assert.equal((await api(DB)).status,409);
  }
  assert.equal((await api(database())).status,409);
+ const online=database();heartbeat(online,'online');assert.equal((await api(online)).status,201);
 });
 test('concurrent requests admit exactly one; cancel is owner/id-bound; cooldown survives cancellation',async()=>{
  const DB=database();heartbeat(DB);

@@ -37,10 +37,12 @@ export class RescueDevice {
       const leased=await claim(this.DB,row.id,Date.now(),this.deviceId);
       if(!leased)return;
       try {
-        // Refuse healthy or ambiguous pages. A lost observation is not confirmed logout.
-        if(await this.screen.state()!=='login_required')throw Error('Not a login screen');
         await this.intake.pause(row.id);
         if(!await this.intake.isPaused(row.id))throw Error('Intake not paused');
+        // An explicit request may prepare a separate login page while the current
+        // one remains online. Adoption happens only after observed login.
+        await this.screen.prepare?.(row.id);
+        if(await this.screen.state()!=='login_required')throw Error('Not a login screen');
         // Recheck cancellation/expiry and screen state after pause, before reading pixels.
         const latest=await current(this.DB,this.deviceId);
         if(latest?.id!==row.id || latest.state!=='preparing' || latest.expires_at<=Date.now())return;
