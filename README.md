@@ -53,7 +53,7 @@ curl -fsSL https://raw.githubusercontent.com/joeeeeey/wechat-agent/main/scripts/
 /ai help
 /ai config
 /ai status
-/ai config set 检查间隔 10
+/ai config set 回复风格 详细
 /ai config set 助手名 小咪
 /ai config set 结束符 ["1111","mmmm"]
 主咪，把回复风格改为详细，以后用英文回复
@@ -61,7 +61,7 @@ curl -fsSL https://raw.githubusercontent.com/joeeeeey/wechat-agent/main/scripts/
 
 `/ai help` 列出系统命令，`/ai config` 显示可修改项，`/ai status` 查看监控状态和截止时间。系统命令无需调用 AI；自然语言改配置由当前 AI 执行器调用同一套校验接口。改名会保留原唤醒词，固定 `/ai` 入口始终可用。
 
-助手/机器显示名、唤醒词、检查与反馈间隔、回复语言/风格、收集规则、登录提醒和附件限制都支持热更新，**不刷新微信、不重启 AI 会话**。保存后 supervisor 约 1 秒内读取；后续任务使用新偏好，进行中的任务不重新执行。微信消息本身仍按当前检查间隔发现。
+助手/机器显示名、唤醒词、回复语言/风格、收集规则、登录提醒和附件限制都支持热更新，**不刷新微信、不重启 AI 会话**。保存后 supervisor 约 1 秒内读取；后续任务使用新偏好，进行中的任务不重新执行。检查与反馈间隔为只读，微信命令和 AI 都不能修改；运行时固定为启动值。若需调整，必须在本机配置后重启 watch，避免误改导致长时间无法响应。默认仍为 20 秒检查、45 秒反馈。
 
 收集期间的 `/ai` 命令也是聊天材料，不会修改配置；当前批次保留开始时的结束符。工作目录、执行权限、CLI 和救援凭据仍在本机配置，不在微信展示。监控时长配置不会延长当前截止时间，续期仍用本机 `start --hours`。字段和值的完整说明见 [watch 配置](docs/watch.md#wechat-system-commands)。
 

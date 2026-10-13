@@ -52,14 +52,14 @@ assistant aliases. These commands do not invoke the AI or semantic classifier:
 | Command | Behavior |
 | --- | --- |
 | `/ai` or `/ai help` | List commands and examples |
-| `/ai config` | Show only editable preferences, without executable arguments, credentials or private paths |
+| `/ai config` | Show editable preferences and read-only intervals, without executable arguments, credentials or private paths |
 | `/ai config set FIELD VALUE` | Validate and atomically save a preference |
 | `/ai status` | Show browser/monitor status, current deadline, interval and backend |
 | `/ai TASK` | Submit an addressed task using a stable prefix |
 
 `FIELD` accepts either the canonical key below or its Chinese name. JSON arrays,
 numbers and booleans retain their types; unquoted text is accepted for strings.
-For example, `/ai config set 检查间隔 10` and
+For example, `/ai config set 回复风格 详细` and
 `/ai config set 结束符 ["1111","done"]`.
 
 | Key | Chinese name | Accepted value |
@@ -69,8 +69,8 @@ For example, `/ai config set 检查间隔 10` and
 | `device.displayName` | 机器名 | Nonempty single-line text, up to 100 characters |
 | `response.language` | 语言 | Language name |
 | `response.style` | 回复风格 | `简短` or `详细` |
-| `monitoring.pollSeconds` | 检查间隔 | 1–300 seconds |
-| `monitoring.progressSeconds` | 进度间隔 | 10–3600 seconds |
+| `monitoring.pollSeconds` | 检查间隔 | Read-only in WeChat/AI; local config and restart required (default 20 seconds) |
+| `monitoring.progressSeconds` | 进度间隔 | Read-only in WeChat/AI; local config and restart required (default 45 seconds) |
 | `monitoring.hours` | 接收时长 | 0.01–168 hours; initial default only, never renews an existing deadline |
 | `collection.enabled` | 收集开关 | Boolean |
 | `collection.startTokens` | 开始标记 | 1–20 strings, each up to 80 characters |
@@ -86,15 +86,19 @@ For example, `/ai config set 检查间隔 10` and
 Renaming the assistant adds the new name to aliases while retaining old ones.
 An explicit aliases edit replaces that list. `/ai` remains available in either case.
 The bridge reads settings for new messages/downloads; the supervisor reloads live
-preferences about once a second, re-arms polling if needed, and reads preferences
+preferences about once a second and reads preferences
 before each new task. Reply language/style guide subsequent AI turns; native
 system replies and automatic progress notices remain Chinese. Running AI turns
 are not restarted. Progress checks have five-second granularity. Login reminders
 already sent are not replayed. An open collection retains its original end markers.
+Polling and progress intervals are captured at startup: neither native commands
+nor AI config RPC can change them. Even a raw config-file edit cannot change a
+running timer; a deliberate local watch restart is required. `/ai status` shows
+the running poll interval, while `/ai config` shows saved local interval values.
 Changing `monitoring.hours` only supplies the initial default when no saved deadline
 exists. `start`/`restart` retain an existing deadline; local `start --hours N` renews it.
 
-Natural-language requests such as “主咪，把检查间隔改为 10 秒” use the configured
+Natural-language requests such as “主咪，把回复风格改为详细” use the configured
 AI and the same validated interface. The turn prompt describes a private JSON
 file passed to `node src/watch/control.cjs /absolute/command.json`:
 
@@ -102,18 +106,18 @@ file passed to `node src/watch/control.cjs /absolute/command.json`:
 {"action":"config","operation":"get"}
 ```
 
-The result contains safe `values` and a `revision`. Apply only explicitly requested
+The result contains safe editable `values`, interval values in `readOnly`, and a `revision`. Apply only explicitly requested
 changes using that revision and the current direct request ID:
 
 ```json
-{"action":"config","operation":"set","requestId":"R001","expectedRevision":"revision returned by get","patch":{"monitoring.pollSeconds":10}}
+{"action":"config","operation":"set","requestId":"R001","expectedRevision":"revision returned by get","patch":{"response.style":"详细"}}
 ```
 
 Stale revisions, invalid values, unsupported keys, completed requests and collected
 material requests are rejected without a partial write. The executor should use
 this interface instead of raw file edits and report its actual result. Natural
 language quality and control-client access depend on the installed CLI and its
-permissions. Workspace, device ID, harness, browser, execution and rescue settings
+permissions. Polling/progress intervals, workspace, device ID, harness, browser, execution and rescue settings
 are local-only. This allowlist is an interface boundary, not a sandbox for a
 privileged local executor.
 

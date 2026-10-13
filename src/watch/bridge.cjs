@@ -102,7 +102,7 @@ exports.start=async function(page,{preservePage=false}={}) {
             else if(system.kind==='set'){const updated=updateConfig(system.patch);record.revision=updated.revision;response=updated.message;}
             else if(system.kind==='status'){
               let supervisor={};try{supervisor=JSON.parse(fs.readFileSync(path.join(root,'supervisor.json'),'utf8'));}catch{}
-              response=`微信：${state.connection}\n监控：${supervisor.status||'unknown'}\n截止：${supervisor.stopAt||'未设置'}\n检查间隔：${readConfig().monitoring.pollSeconds} 秒\n正在收集：${state.collection?'是':'否'}\n执行器：${readConfig().harness.backend}`;
+              response=`微信：${state.connection}\n监控：${supervisor.status||'unknown'}\n截止：${supervisor.stopAt||'未设置'}\n检查间隔：${supervisor.checkIntervalSeconds??readConfig().monitoring.pollSeconds} 秒\n正在收集：${state.collection?'是':'否'}\n执行器：${readConfig().harness.backend}`;
             }else response=system.message;
             record.state='handled';save();await notify(response);record.delivery='verified';
           }catch(e){record.state=record.state==='handled'?'delivery_uncertain':'rejected';save();if(record.state==='rejected')await notify(e.message);}

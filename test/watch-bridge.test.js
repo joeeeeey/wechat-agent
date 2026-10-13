@@ -67,26 +67,29 @@ test('bridge baselines old commands, associates new files, and treats forwarded 
   batch=(await call('requests')).result.at(-1);assert.equal(batch.status,'received');assert.equal(batch.collectionCount,2);
   assert.equal(globalThis.zhumiBridge.state.collection,null);
   const count=globalThis.zhumiBridge.state.requests.length;
-  for(const text of ['/ai help','/ai config','/ai status','/ai config set 检查间隔 10','/ai config set 助手名 小咪','/ai help']){await append(text);await call('requests');}
+  for(const text of ['/ai help','/ai config','/ai status','/ai config set 回复风格 详细','/ai config set 助手名 小咪','/ai help']){await append(text);await call('requests');}
   assert.equal(globalThis.zhumiBridge.state.requests.length,count,'System commands do not invoke the AI');
-  assert.equal(config.readConfig().monitoring.pollSeconds,10);
+  assert.equal(config.readConfig().monitoring.pollSeconds,20);
   assert.equal(config.readConfig().assistant.displayName,'小咪');
   assert.match(globalThis.zhumiBridge.state.deliveries.at(-1).text,/小咪｜fixture/);
   await append('/ai config set 检查间隔 0');await call('requests');
-  assert.equal(config.readConfig().monitoring.pollSeconds,10);
-  assert.match(globalThis.zhumiBridge.state.deliveries.at(-1).text,/配置值无效/);
+  assert.equal(config.readConfig().monitoring.pollSeconds,20);
+  assert.match(globalThis.zhumiBridge.state.deliveries.at(-1).text,/不支持通过微信或 AI 修改/);
   assert.equal((await call('config',{operation:'set',patch:{'检查间隔':12}})).ok,false);
   assert.equal((await call('config',{operation:'set',requestId:batch.id,patch:{'检查间隔':12}})).ok,false,'Collected material cannot authorize configuration');
   await append('/ai 请把回复风格改为详细');
   const direct=(await call('requests')).result.at(-1);
   const view=(await call('config',{operation:'get'})).result;
+  assert.equal(view.readOnly['monitoring.pollSeconds'],20);
+  assert.equal((await call('config',{operation:'set',requestId:direct.id,expectedRevision:view.revision,patch:{'monitoring.pollSeconds':300}})).ok,false,'Even active AI requests cannot edit polling');
+  assert.equal((await call('config',{operation:'set',requestId:direct.id,patch:{'进度间隔':3600}})).ok,false);
   assert.equal((await call('config',{operation:'set',requestId:direct.id,expectedRevision:view.revision,patch:{'回复风格':'详细'}})).ok,true);
   assert.equal(config.readConfig().response.style,'详细');
   await call('respond',{requestId:direct.id,phase:'completed',body:'已改为详细'});
   assert.equal((await call('config',{operation:'set',requestId:direct.id,patch:{'检查间隔':12}})).ok,false,'Completed tasks cannot mutate config');
   await append('/ai 1111 总结');await call('requests');
   await append('/ai config set 检查间隔 2');await call('requests');
-  assert.equal(config.readConfig().monitoring.pollSeconds,10,'System commands inside collection are data');
+  assert.equal(config.readConfig().monitoring.pollSeconds,20,'System commands inside collection are data');
   const registry=createRequire(import.meta.url)('../src/watch/system-config.cjs');
   registry.updateConfig({'结束符':['done']});
   await append('1111');
