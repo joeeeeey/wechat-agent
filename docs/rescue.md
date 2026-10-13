@@ -1,9 +1,11 @@
-# Future fixed-URL rescue channel
+# Optional Cloudflare rescue/status service
 
-Not implemented or deployed in v0.1. The runtime only writes local `health.json` with connection state and timestamp; nobody is notified remotely when WeChat drops.
+The local File Helper agent has no Cloudflare dependency. Keep `WECHAT_RESCUE_ENABLED=false` (the default) to run locally without a Cloudflare account, domain, token or D1 database. A roughly 24-hour WeChat login lifetime is an observation, not a guaranteed TTL; users can manually log in again when needed.
 
-A future user-supplied domain can host an authenticated status/rescue page. Do not publish an unauthenticated QR code or browser debugging port. Require owner authentication, short-lived explicit login attempts, TLS, expiry, CSRF protection and rate limits. Show stale heartbeat distinctly from a confirmed logout. Keep recovery separate from the task executor and pause task intake during reauthentication.
+For authenticated off-device status monitoring, opt in with a private `.env` file. Only then do deployment and heartbeat commands require Cloudflare Workers, D1, Access and a domain. See [configuration and deployment](runbook/wechat-rescue.md). Real owner emails, domains and device IDs belong in private configuration, not tracked source. `.env.example` contains only examples; `.env` is ignored by Git.
 
-A QR displayed on the same phone cannot necessarily be scanned with that phone; test the exact WeChat flow and provide a second-screen path. Do not promise login recovery until this has been verified. Recovery navigation must be explicit, never a periodic refresh of a healthy session.
+The heartbeat accepts this repository's `health.json` (`state`, `updatedAt`) and compatible external observations (`deviceId`, `connection`, `lastObservedAt`). A stale/missing source reports unknown. A generic disconnected observation is not proof of a login screen.
 
-Pending: domain, hosting/access choice, owner authentication, and verified account-compatible scan flow. This phase does not export QR codes from the current session.
+Remote QR rescue remains a separate disabled prototype: [requirements and acceptance](runbook/remote-qr-rescue.md). Setting `WECHAT_RESCUE_ENABLED=true` deploys authenticated status monitoring, not automatic relogin or an operational QR adapter. The apply script keeps `RESCUE_QR_ENABLED=false`.
+
+Turning the local flag off prevents subsequent deployment/heartbeat/install commands from using Cloudflare; it does not delete existing resources, remove an installed job or change an already-deployed Worker. Stop an existing heartbeat explicitly if needed. This configuration change does not remove data from previously published Git commits or PR history.

@@ -2,7 +2,7 @@
 
 一个微信文件传输助手，控制一台电脑。可复用 skill + Playwright 本地运行时，AI harness 可自行替换。
 
-**v0.1 prototype:** dedicated browser launch → local QR login → visible login detection → conversational name/preferences/consent setup → serial text tasks → replies. No multi-machine router. No rescue website yet.
+**v0.1 prototype:** dedicated browser launch → local QR login → visible login detection → conversational name/preferences/consent setup → serial text tasks → replies. Optional exact-device targeting; no automatic cross-machine router. Authenticated rescue status monitoring is available as an optional deployment.
 
 ## Start
 
@@ -16,7 +16,7 @@ npm start -- init
 npm start
 ```
 
-Send `/ai 工作咪` after the greeting and follow the onboarding prompts. The AI responds with `[AI]`.
+Send `/ai 默认` or `/ai 设置` after the greeting and follow the onboarding prompts. The AI responds with `[AI]`.
 
 Claude, Codex and Grok can be connected through a stdin/stdout executable adapter. Native provider adapters are **not bundled or live-verified**. Broad execution permissions remain an explicit local harness choice.
 
@@ -24,8 +24,16 @@ Claude, Codex and Grok can be connected through a stdin/stdout executable adapte
 
 Automated core and isolated Playwright fixture tests. Public frontend assets were inspected for DOM selectors; no existing WeChat browser was controlled. Real account login and end-to-end provider execution still require a separate live smoke test. This is not a production reliability or security guarantee.
 
-The browser is kept open without refresh/reload/recovery loops. Disconnects pause work. Old messages and crashed tasks are not automatically replayed. Text only; no attachments or in-task progress streaming yet.
+The browser is kept open without refresh/reload/recovery loops. Disconnects pause work. Old messages and crashed tasks are not automatically replayed. Replies are text only; opt-in [incoming attachment reading](docs/attachments.md) supports image previews and already-local blob files. No in-task progress streaming yet. Attachment selectors and live provider behavior remain unverified; do not enable by restarting an existing session.
 
-Future [rescue channel](docs/rescue.md): fixed authenticated URL for status and explicit recovery, once domain and login flow are supplied. No public QR endpoints.
+[Rescue status channel](docs/rescue.md): optional Cloudflare Worker + D1 + Access deployment, independent device heartbeat, and recovery confirmation after manual login. Remote QR recovery is a disabled, fixture-tested prototype; live login acceptance is still outstanding.
 
 Private data stays outside the repo under `~/.local/share/wechat-agent/`. Never publish browser profiles, transcripts, tokens or credentials. Full-permission agents can affect the whole computer; this project is not a sandbox. Unofficial project, not affiliated with Tencent, Anthropic, OpenAI or xAI.
+
+## Optional Cloudflare rescue
+
+Local usage needs no Cloudflare account or configuration. Rescue/status monitoring is disabled by default (`WECHAT_RESCUE_ENABLED=false`). To opt in, copy `.env.example` to private `.env` and supply your own allowed emails, domain, device ID and Cloudflare credentials. See [configuration](docs/runbook/wechat-rescue.md). Enabling monitoring does not enable the experimental QR recovery adapter.
+
+## Names, devices and conversational settings
+
+Defaults: 主咪 on the current hostname/OS, with a persistent random device ID. Use `/ai 默认` or `/ai 设置` on first connection. `/ai` remains a fixed entry after renaming; `/ai 查看设置` shows non-secret settings. For multiple computers, enable strict device targeting on **each** installation. See [identity, dialogue and routing](docs/settings.md).
