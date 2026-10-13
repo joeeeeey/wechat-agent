@@ -77,6 +77,16 @@ test('cancel/expiry fence late device writes and clear encrypted payload',async(
  assert.equal((await current(DB)).state,'expired');assert.equal((await current(DB)).envelope,null);
  assert.equal(await transition(DB,row.id,'awaiting_scan','completed'),null);
 });
+test('only the initiating owner can keep a live QR display open',async()=>{
+ const {DB,row}=await setup();
+ DB.sqlite.prepare('UPDATE rescue_attempt SET expires_at=?').run(Date.now()+1000);
+ assert.equal((await api(DB,'POST',{id:row.id},{path:'/api/rescue/keepalive',owner:'other@example.com'})).status,409);
+ assert.equal((await api(DB,'POST',{id:'wrong'},{path:'/api/rescue/keepalive'})).status,409);
+ assert.equal((await api(DB,'POST',{id:row.id},{path:'/api/rescue/keepalive'})).status,200);
+ assert.ok((await current(DB)).expires_at>Date.now()+100000);
+ await api(DB,'POST',{id:row.id},{path:'/api/rescue/cancel'});
+ assert.equal((await api(DB,'POST',{id:row.id},{path:'/api/rescue/keepalive'})).status,409);
+});
 test('device requires acknowledged intake pause and fails closed without image reads',async()=>{
  for(const state of ['online','unknown','login_required']){
   const {DB}=await setup();let reads=0;

@@ -37,7 +37,7 @@ export async function routeRescue(request, env, owner, headers) {
   const device=env.DEVICE_ID || DEVICE;
   const reply=(body,status=200)=>Response.json(body,{status,headers});
   if(env.RESCUE_QR_ENABLED!=='true')return reply({error:'Remote rescue is not enabled'},503);
-  if(!['/api/rescue','/api/rescue/cancel'].includes(path))return reply({error:'Not found'},404);
+  if(!['/api/rescue','/api/rescue/cancel','/api/rescue/keepalive'].includes(path))return reply({error:'Not found'},404);
   if(request.method!=='GET' && request.method!=='POST')return reply({error:'Method not allowed'},405);
   if(request.method==='GET' && path!=='/api/rescue')return reply({error:'Method not allowed'},405);
   if(request.method==='POST' && (request.headers.get('Origin')!==new URL(request.url).origin ||
@@ -47,6 +47,12 @@ export async function routeRescue(request, env, owner, headers) {
   if(request.method==='GET')return reply(visible(await current(env.DB,device),owner));
   let input;
   try {input=await boundedJSON(request);}catch{return reply({error:'Invalid body'},400);}
+  if(path==='/api/rescue/keepalive'){
+    if(typeof input?.id!=='string')return reply({error:'Attempt required'},400);
+    const now=Date.now();
+    const row=await env.DB.prepare(`UPDATE rescue_attempt SET expires_at=? WHERE device_id=? AND id=? AND owner=? AND state IN ${ACTIVE} AND expires_at>? RETURNING *`).bind(now+TTL,device,input.id,owner,now).first();
+    return row?reply(visible(row,owner)):reply({error:'Attempt no longer active'},409);
+  }
   if(path==='/api/rescue/cancel') {
     if(typeof input?.id!=='string')return reply({error:'Attempt required'},400);
     await env.DB.prepare(`UPDATE rescue_attempt SET state='cancelled', envelope=NULL, public_key=NULL WHERE device_id=? AND id=? AND owner=? AND state IN ${ACTIVE}`).bind(device,input.id,owner).run();
