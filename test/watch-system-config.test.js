@@ -21,19 +21,20 @@ test('system config validates atomic edits, redacts private settings, and preser
   for(const text of [original.workspace,'private-argument','/private/credentials']){
    assert.ok(!JSON.stringify(initial).includes(text));assert.ok(!describe().includes(text));
   }
-  const changed=updateConfig({'助手名':'小咪','检查间隔':10,'回复风格':'详细'},{expectedRevision:initial.revision});
+  const changed=updateConfig({'助手名':'小咪','语言':'English','回复风格':'详细'},{expectedRevision:initial.revision});
   assert.deepEqual(changed.values['assistant.aliases'],['小咪','主咪','zhumi']);
-  assert.equal(changed.values['response.language'],'中文');
-  assert.equal(config.readConfig().monitoring.pollSeconds,10);
-  assert.throws(()=>updateConfig({'检查间隔':20},{expectedRevision:initial.revision}),/重新读取/);
+  assert.equal(changed.values['response.language'],'English');
+  assert.equal(changed.readOnly['monitoring.pollSeconds'],20);assert.equal(changed.readOnly['monitoring.progressSeconds'],45);assert.equal(changed.values['monitoring.pollSeconds'],undefined);
+  assert.equal(config.readConfig().monitoring.pollSeconds,20);
+  assert.throws(()=>updateConfig({'回复风格':'简短'},{expectedRevision:initial.revision}),/重新读取/);
   const before=fs.readFileSync(config.configPath,'utf8');
-  for(const patch of [{'助手名':'bad','检查间隔':0},{'harness.command':'arbitrary'},{'execution.enabled':false},JSON.parse('{"__proto__":{}}'),{'结束符':[]},{'附件大小上限':1.5},{'登录提醒':'false'}])assert.throws(()=>updateConfig(patch));
+  for(const patch of [{'助手名':'bad','检查间隔':10},{'monitoring.pollSeconds':300},{'进度间隔':20},{'monitoring.progressSeconds':3600},{'harness.command':'arbitrary'},{'execution.enabled':false},JSON.parse('{"__proto__":{}}'),{'结束符':[]},{'附件大小上限':1.5},{'登录提醒':'false'}])assert.throws(()=>updateConfig(patch));
   assert.equal(fs.readFileSync(config.configPath,'utf8'),before,'Invalid patches are all-or-nothing');
   updateConfig({'接收时长':48,'登录提醒':false,'结束符':['1111','done']});
-  const next=config.readConfig();next.harness.command='other';next.workspace='/other';
+  const next=config.readConfig();next.harness.command='other';next.workspace='/other';next.monitoring.pollSeconds=300;next.monitoring.progressSeconds=3600;
   const live=applyLive(original,next);
   assert.equal(live.monitoring.hours,24);assert.equal(live.harness.command,original.harness.command);assert.equal(live.workspace,original.workspace);
-  assert.equal(live.monitoring.pollSeconds,10);assert.equal(live.loginReminders.enabled,false);assert.deepEqual(live.collection.endMarkers,['1111','done']);
+  assert.equal(live.monitoring.pollSeconds,20);assert.equal(live.monitoring.progressSeconds,45);assert.equal(live.loginReminders.enabled,false);assert.deepEqual(live.collection.endMarkers,['1111','done']);
  }finally{fs.rmSync(home,{recursive:true,force:true});}
 });
 

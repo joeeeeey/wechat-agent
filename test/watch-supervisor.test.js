@@ -32,20 +32,20 @@ test('configured command backend runs a completed batch once and does not react 
   assert.equal(received.find(r=>r.phase==='completed')?.body,'batch read',diagnostics);
   await new Promise(r=>setTimeout(r,1100));assert.equal(received.filter(r=>r.phase==='completed').length,1);
   const saved=JSON.parse(await fs.readFile(path.join(root,'supervisor.json'),'utf8'));assert.equal(saved.jobs.R1.phase,'completed');
-  cfg.monitoring.pollSeconds=2;cfg.monitoring.progressSeconds=20;cfg.monitoring.hours=48;cfg.response={language:'English',style:'详细'};
+  cfg.monitoring.pollSeconds=300;cfg.monitoring.progressSeconds=20;cfg.monitoring.hours=48;cfg.response={language:'English',style:'详细'};
   await fs.writeFile(path.join(root,'config.json.tmp'),JSON.stringify(cfg));await fs.rename(path.join(root,'config.json.tmp'),path.join(root,'config.json'));
   for(let n=0;n<30;n++){
    const current=JSON.parse(await fs.readFile(path.join(root,'supervisor.json'),'utf8'));
-   if(current.checkIntervalSeconds===2)break;
+   if(current.checkIntervalSeconds!==1)break;
    await new Promise(r=>setTimeout(r,100));
   }
   const reloaded=JSON.parse(await fs.readFile(path.join(root,'supervisor.json'),'utf8'));
-  assert.equal(reloaded.checkIntervalSeconds,2);assert.equal(reloaded.progressIntervalSeconds,20);assert.equal(reloaded.stopAt,saved.stopAt,'Hot reload must not renew authorization');
+  assert.equal(reloaded.checkIntervalSeconds,1);assert.equal(reloaded.progressIntervalSeconds,45);assert.equal(reloaded.stopAt,saved.stopAt,'Hot reload must not renew authorization');
   requests.push({...request,id:'R2',body:'检查新偏好'});
   for(let n=0;n<80&&!received.some(r=>r.requestId==='R2'&&r.phase==='completed');n++)await new Promise(r=>setTimeout(r,100));
   assert.equal(received.find(r=>r.requestId==='R2'&&r.phase==='completed')?.body,'new preferences',diagnostics);
   await new Promise(r=>setTimeout(r,2200));
-  assert.ok(polls.at(-1)-polls.at(-2)>=1800,'Actual polling timer uses the new interval');
+  assert.ok(polls.at(-1)-polls.at(-2)<5000,'Polling stays responsive despite a raw file edit to 300 seconds');
   assert.equal(received.filter(r=>r.phase==='completed').length,2,'Reload does not replay completed work');
  }finally{
   const closed=new Promise(r=>child.once('exit',r));child.kill('SIGTERM');
