@@ -4,6 +4,7 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { chromium } from 'playwright';
 import { FileHelper } from './browser.js';
+import {AttachmentReader,attachmentRequest} from './attachments.js';
 import { promptFor, runHarness } from './core.js';
 import {initializeSettings,effectiveSettings,matchMessage,intro,configure} from './settings.js';
 process.umask(0o077);
@@ -46,10 +47,17 @@ try {
     await new Promise(r => setTimeout(r, 1000));
   }
   const seen = new Set((await bridge.messages()).map(m => m.id));
+  const attachments=new AttachmentReader(page,config.attachments);
+  await attachments.scan();
   status('connected');
   await bridge.send(intro(effective,state));
   while (Date.now()<deadline) {
     if (!(await bridge.loggedIn())) { status('disconnected'); console.log('Login lost. Tasks paused; page left untouched.'); break; }
+    const incoming=await attachments.scan();
+    if(state.stage==='ready'&&!state.paused&&incoming.length){
+      const entry=effective.requireTarget?`/ai [${effective.deviceId}]`:'/ai';
+      await bridge.send(`发现附件 ${incoming.map(a=>a.id).join('、')}。发送 ${entry} 读取附件 ${incoming[0].id} 加具体要求；10 分钟内有效。只支持可见图片预览或已加载的本地文件。`);
+    }
     const messages = await bridge.messages();
     for (const message of messages) {
       if(Date.now()>=deadline)break;
@@ -63,15 +71,23 @@ try {
       const settingReply=configure(text,settings,state);
       if(settingReply!==null){save('settings.json',settings);save('state.json',state);await bridge.send(settingReply);continue;}
       if (state.paused) continue;
+      const requestedAttachment=attachmentRequest(text);
+      const localAttachments=[];
+      if(requestedAttachment){
+        try{localAttachments.push(await attachments.capture(requestedAttachment.id,path.join(root,'attachments')));}
+        catch{await bridge.send('附件无法读取：可能已过期、尚未加载、过大或需要远程下载。请发送文字说明。');continue;}
+      }
+      try {
       const job = { id: randomUUID(), status: 'running', startedAt: new Date().toISOString() };
       state.jobs.push(job); state.jobs = state.jobs.slice(-200); save('state.json', state);
       await bridge.send(`开始处理任务 ${job.id.slice(0, 8)}。`);
       let result;
-      try { result = await runHarness(config, promptFor({...state,name:effective.name,preferences:JSON.stringify({userPreferences:state.preferences,deviceName:effective.deviceName,language:effective.language,timezone:effective.timezone,style:effective.style})}, text, state.history)); }
+      try { result = await runHarness(config, promptFor({...state,name:effective.name,preferences:JSON.stringify({userPreferences:state.preferences,deviceName:effective.deviceName,language:effective.language,timezone:effective.timezone,style:effective.style})}, text, state.history,localAttachments)); }
       catch { job.status = 'failed'; save('state.json', state); await bridge.send('Agent 执行失败或超时；不会自动重试。请在本机检查 harness，操作可能已经部分执行。'); continue; }
       job.status = 'reply_pending'; save('state.json', state);
       await bridge.send(result.slice(0, 3500) + (result.length > 3500 ? '\n（回复过长，已截断）' : ''));
       job.status = 'completed'; state.history = [...state.history, { request: text, response: result.slice(0, 3500) }].slice(-6); save('state.json', state);
+      } finally {for(const attachment of localAttachments)fs.rmSync(attachment.path,{force:true});}
     }
     await new Promise(r => setTimeout(r, 1000));
   }
