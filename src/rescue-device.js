@@ -1,22 +1,22 @@
-import {expire,current,claim,transition,sealPNG} from '../infra/cloudflare/wechat-rescue/rescue.mjs';
+import {DEVICE,expire,current,claim,transition,sealPNG} from '../infra/cloudflare/wechat-rescue/rescue.mjs';
 
 // Caller owns authenticated DB access and a VERIFIED existing login-page adapter.
 // No browser discovery, attach, reload, navigation, click, service restart or intake replay.
 export class RescueDevice {
-  constructor({DB,screen,intake}) { this.DB=DB; this.screen=screen; this.intake=intake; this.busy=false; }
+  constructor({DB,screen,intake,deviceId=DEVICE}) { this.deviceId=deviceId; this.DB=DB; this.screen=screen; this.intake=intake; this.busy=false; }
   async tick() {
     if(this.busy)return;
     this.busy=true;
     try {
       await expire(this.DB);
-      const row=await current(this.DB);
+      const row=await current(this.DB,this.deviceId);
       if(!row || !['requested','awaiting_scan'].includes(row.state))return;
       if(row.state==='awaiting_scan') {
         // Completion requires an observed chat UI, not merely disappearance of the QR.
-        if(await this.screen.state()==='online')await transition(this.DB,row.id,'awaiting_scan','completed');
+        if(await this.screen.state()==='online')await transition(this.DB,row.id,'awaiting_scan','completed',null,Date.now(),this.deviceId);
         return;
       }
-      const leased=await claim(this.DB,row.id);
+      const leased=await claim(this.DB,row.id,Date.now(),this.deviceId);
       if(!leased)return;
       try {
         // Refuse healthy or ambiguous pages. A lost observation is not confirmed logout.
@@ -24,15 +24,15 @@ export class RescueDevice {
         await this.intake.pause(row.id);
         if(!await this.intake.isPaused(row.id))throw Error('Intake not paused');
         // Recheck cancellation/expiry and screen state after pause, before reading pixels.
-        const latest=await current(this.DB);
+        const latest=await current(this.DB,this.deviceId);
         if(latest?.id!==row.id || latest.state!=='preparing' || latest.expires_at<=Date.now())return;
         if(await this.screen.state()!=='login_required')throw Error('Screen changed');
         const png=await this.screen.qrPNG();
         const envelope=await sealPNG(png,JSON.parse(leased.public_key),row.id);
-        await transition(this.DB,row.id,'preparing','awaiting_scan',JSON.stringify(envelope));
+        await transition(this.DB,row.id,'preparing','awaiting_scan',JSON.stringify(envelope),Date.now(),this.deviceId);
       } catch {
         // Never persist raw browser errors, pixels or credentials. Intake stays paused.
-        await transition(this.DB,row.id,'preparing','failed');
+        await transition(this.DB,row.id,'preparing','failed',null,Date.now(),this.deviceId);
       }
     } finally {this.busy=false;}
   }

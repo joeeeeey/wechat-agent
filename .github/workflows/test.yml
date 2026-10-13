@@ -14,3 +14,4 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm test
+      - run: python3 -m unittest discover -s scripts -p 'test_wechat_rescue*.py'

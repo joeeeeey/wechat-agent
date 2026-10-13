@@ -34,11 +34,11 @@ const headers = {
   'Content-Security-Policy': "default-src 'none'; script-src 'self'; connect-src 'self'; img-src blob:; style-src 'unsafe-inline'; frame-ancestors 'none'; form-action 'none'; base-uri 'none'",
   'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer',
 };
-export function summarize(row, now = Date.now()) {
+export function summarize(row, now = Date.now(), device = 'local-device') {
   const fresh = value => Number.isFinite(Date.parse(value)) && now - Date.parse(value) >= -5000 && now - Date.parse(value) <= 90000;
   const deviceOnline = !!row && fresh(row.received_at);
   const connection = deviceOnline && fresh(row.observed_at) && ['online','offline','disconnected','login_required'].includes(row.connection_state) ? row.connection_state : 'unknown';
-  return {device: 'work-mac-joey', deviceOnline, connection,
+  return {device, deviceOnline, connection,
     heartbeatAt: row?.received_at ?? null, observedAt: row?.observed_at ?? null,
     recoveredAt: row?.recovered_at ?? null};
 }
@@ -72,12 +72,12 @@ export default {
     if (path === '/app.js') return new Response(client, {headers: {...headers, 'Content-Type': 'text/javascript; charset=utf-8'}});
     if (path === '/api/status') {
       try {
-        const row = await env.DB.prepare('SELECT connection_state, observed_at, received_at, recovered_at FROM device_heartbeat WHERE device_id = ?').bind('work-mac-joey').first();
-        return Response.json(summarize(row), {headers});
+        const row = await env.DB.prepare('SELECT connection_state, observed_at, received_at, recovered_at FROM device_heartbeat WHERE device_id = ?').bind(env.DEVICE_ID || 'local-device').first();
+        return Response.json(summarize(row, Date.now(), env.DEVICE_ID || 'local-device'), {headers});
       } catch { return Response.json({error: 'Status unavailable'}, {status: 503, headers}); }
     }
     if (path !== '/') return new Response('Not found', {status: 404, headers});
-    return new Response(`<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>主咪 · 微信状态</title><style>body{font-family:system-ui;max-width:680px;margin:6vh auto;padding:20px;background:#f5f4ef;color:#26352c}main{background:white;padding:28px;border-radius:20px}p{line-height:1.8}button{padding:12px 20px;border-radius:10px;border:1px solid #789;background:#edf4ef;cursor:pointer}dt{margin-top:14px;color:#58675f}dd{margin:4px 0;overflow-wrap:anywhere}small{color:#58675f}</style><main><h1>🐱 主咪 · 微信状态</h1><p>工作设备：work-mac-joey</p><section aria-live="polite"><h2 id="device">正在读取设备状态…</h2><p id="wechat">微信状态待确认</p><p id="help">正在连接状态服务。</p></section><dl><dt>设备最后心跳</dt><dd id="heartbeat">暂无</dd><dt>微信最后观测</dt><dd id="observed">暂无</dd><dt>最近一次恢复在线确认</dt><dd id="recovered">暂无</dd></dl><p><button id="refresh">更新状态</button></p><small id="updated">每 15 秒自动更新；超过 90 秒未收到心跳会显示失联。</small><p>${env.RESCUE_QR_ENABLED === 'true' ? '扫码救援已启用；仅响应本页主动发起的短时请求。' : '这是状态监测页。需要重新登录时，请在工作 Mac 操作微信；本页不提供扫码或远程操作。'}</p>${env.RESCUE_QR_ENABLED === 'true' ? rescueHTML : ''}<noscript>请启用 JavaScript 以查看实时状态。</noscript></main><script src="/app.js" defer></script></html>`,
+    return new Response(`<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>主咪 · 微信状态</title><style>body{font-family:system-ui;max-width:680px;margin:6vh auto;padding:20px;background:#f5f4ef;color:#26352c}main{background:white;padding:28px;border-radius:20px}p{line-height:1.8}button{padding:12px 20px;border-radius:10px;border:1px solid #789;background:#edf4ef;cursor:pointer}dt{margin-top:14px;color:#58675f}dd{margin:4px 0;overflow-wrap:anywhere}small{color:#58675f}</style><main><h1>🐱 主咪 · 微信状态</h1><p>工作设备状态</p><section aria-live="polite"><h2 id="device">正在读取设备状态…</h2><p id="wechat">微信状态待确认</p><p id="help">正在连接状态服务。</p></section><dl><dt>设备最后心跳</dt><dd id="heartbeat">暂无</dd><dt>微信最后观测</dt><dd id="observed">暂无</dd><dt>最近一次恢复在线确认</dt><dd id="recovered">暂无</dd></dl><p><button id="refresh">更新状态</button></p><small id="updated">每 15 秒自动更新；超过 90 秒未收到心跳会显示失联。</small><p>${env.RESCUE_QR_ENABLED === 'true' ? '扫码救援已启用；仅响应本页主动发起的短时请求。' : '这是状态监测页。需要重新登录时，请在工作 Mac 操作微信；本页不提供扫码或远程操作。'}</p>${env.RESCUE_QR_ENABLED === 'true' ? rescueHTML : ''}<noscript>请启用 JavaScript 以查看实时状态。</noscript></main><script src="/app.js" defer></script></html>`,
       {headers: {...headers, 'Content-Type': 'text/html; charset=utf-8'}});
   }
 };

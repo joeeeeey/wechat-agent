@@ -9,7 +9,7 @@ from wechat_rescue_heartbeat import telemetry, SQL
 class HeartbeatTests(unittest.TestCase):
     def setUp(self):
         self.now = datetime(2026, 10, 12, 16, tzinfo=timezone.utc)
-        self.source = {'deviceId': 'work-mac-joey', 'connection': 'online',
+        self.source = {'deviceId': 'local-device', 'connection': 'online',
                        'lastObservedAt': '2026-10-12T15:59:50Z', 'requests': ['PRIVATE'], 'token': 'SECRET'}
 
     def test_allowlist(self):
@@ -34,7 +34,7 @@ class HeartbeatTests(unittest.TestCase):
         db = sqlite3.connect(':memory:')
         db.executescript((Path(__file__).resolve().parents[1]/'infra/cloudflare/wechat-rescue/schema.sql').read_text())
         def write(state):
-            db.execute(SQL, ('work-mac-joey', state, '2026-10-12T15:59:50Z'))
+            db.execute(SQL, ('local-device', state, '2026-10-12T15:59:50Z'))
             return db.execute('SELECT recovered_at FROM device_heartbeat').fetchone()[0]
         self.assertIsNone(write('online'))
         self.assertIsNone(write('disconnected'))

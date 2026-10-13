@@ -1,19 +1,19 @@
 // Authenticated, opt-in rescue protocol. Never contains browser credentials.
-export const DEVICE = 'work-mac-joey';
+export const DEVICE = 'local-device';
 export const ACTIVE = "('requested','preparing','awaiting_scan')";
 export const TTL = 120000;
 export async function expire(DB, now = Date.now()) {
   await DB.prepare(`UPDATE rescue_attempt SET state='expired', envelope=NULL, public_key=NULL WHERE state IN ${ACTIVE} AND expires_at<=?`).bind(now).run();
 }
-export async function current(DB) {
-  return DB.prepare('SELECT * FROM rescue_attempt WHERE device_id=?').bind(DEVICE).first();
+export async function current(DB, device = DEVICE) {
+  return DB.prepare('SELECT * FROM rescue_attempt WHERE device_id=?').bind(device).first();
 }
-export async function transition(DB, id, from, to, envelope = null, now = Date.now()) {
+export async function transition(DB, id, from, to, envelope = null, now = Date.now(), device = DEVICE) {
   return DB.prepare(`UPDATE rescue_attempt SET state=?, envelope=?, public_key=CASE WHEN ?='awaiting_scan' THEN public_key ELSE NULL END WHERE device_id=? AND id=? AND state=? AND expires_at>? RETURNING id`)
-    .bind(to, envelope, to, DEVICE, id, from, now).first();
+    .bind(to, envelope, to, device, id, from, now).first();
 }
-export async function claim(DB, id, now = Date.now()) {
-  return DB.prepare("UPDATE rescue_attempt SET state='preparing' WHERE device_id=? AND id=? AND state='requested' AND expires_at>? RETURNING *").bind(DEVICE,id,now).first();
+export async function claim(DB, id, now = Date.now(), device = DEVICE) {
+  return DB.prepare("UPDATE rescue_attempt SET state='preparing' WHERE device_id=? AND id=? AND state='requested' AND expires_at>? RETURNING *").bind(device,id,now).first();
 }
 export function visible(row, owner, now = Date.now()) {
   if (!row || row.owner !== owner) return {state:'idle'};
@@ -34,6 +34,7 @@ async function boundedJSON(request) {
 }
 export async function routeRescue(request, env, owner, headers) {
   const path=new URL(request.url).pathname;
+  const device=env.DEVICE_ID || DEVICE;
   const reply=(body,status=200)=>Response.json(body,{status,headers});
   if(env.RESCUE_QR_ENABLED!=='true')return reply({error:'Remote rescue is not enabled'},503);
   if(!['/api/rescue','/api/rescue/cancel'].includes(path))return reply({error:'Not found'},404);
@@ -43,13 +44,13 @@ export async function routeRescue(request, env, owner, headers) {
       request.headers.get('X-Rescue-Intent')!=='1' || request.headers.get('Content-Type')!=='application/json'))
     return reply({error:'Invalid request origin'},403);
   await expire(env.DB);
-  if(request.method==='GET')return reply(visible(await current(env.DB),owner));
+  if(request.method==='GET')return reply(visible(await current(env.DB,device),owner));
   let input;
   try {input=await boundedJSON(request);}catch{return reply({error:'Invalid body'},400);}
   if(path==='/api/rescue/cancel') {
     if(typeof input?.id!=='string')return reply({error:'Attempt required'},400);
-    await env.DB.prepare(`UPDATE rescue_attempt SET state='cancelled', envelope=NULL, public_key=NULL WHERE device_id=? AND id=? AND owner=? AND state IN ${ACTIVE}`).bind(DEVICE,input.id,owner).run();
-    return reply(visible(await current(env.DB),owner));
+    await env.DB.prepare(`UPDATE rescue_attempt SET state='cancelled', envelope=NULL, public_key=NULL WHERE device_id=? AND id=? AND owner=? AND state IN ${ACTIVE}`).bind(device,input.id,owner).run();
+    return reply(visible(await current(env.DB,device),owner));
   }
   const key=input?.publicKey;
   // Only a browser-generated public RSA-2048 key. Reject all private key fields.
@@ -67,7 +68,7 @@ export async function routeRescue(request, env, owner, headers) {
     ON CONFLICT(device_id) DO UPDATE SET id=excluded.id,owner=excluded.owner,state=excluded.state,
       created_at=excluded.created_at,expires_at=excluded.expires_at,public_key=excluded.public_key,envelope=NULL
     WHERE rescue_attempt.created_at<=? AND rescue_attempt.state NOT IN ${ACTIVE} RETURNING *`)
-    .bind(DEVICE,id,owner,now,now+TTL,JSON.stringify(key),DEVICE,...Array(4).fill(new Date(now).toISOString()),now-300000).first();
+    .bind(device,id,owner,now,now+TTL,JSON.stringify(key),device,...Array(4).fill(new Date(now).toISOString()),now-300000).first();
   return row?reply(visible(row,owner),201):reply({error:'Requires fresh login-required state, no active attempt, and five-minute cooldown'},409);
 }
 const b64=bytes=>btoa(String.fromCharCode(...bytes));

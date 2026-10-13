@@ -59,3 +59,14 @@ test('remote rescue controls are disabled by default and opt-in page includes pr
   const apiRequest=new Request('https://rescue.example.com/api/rescue',{headers:r.headers});
   assert.equal((await worker.fetch(apiRequest,env)).status,503);
 });
+
+test('status selects and reports configured device ID',async()=>{
+ const signed=await request();
+ let selected;
+ const response=await worker.fetch(new Request('https://rescue.example.com/api/status',{headers:signed.headers}),{
+  ...env,DEVICE_ID:'custom-computer',DB:{prepare:()=>({bind:device=>{selected=device;return {first:async()=>null};}})}
+ });
+ assert.equal(response.status,200);
+ assert.equal(selected,'custom-computer');
+ assert.equal((await response.json()).device,'custom-computer');
+});

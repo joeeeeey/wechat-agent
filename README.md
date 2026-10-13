@@ -29,3 +29,7 @@ The browser is kept open without refresh/reload/recovery loops. Disconnects paus
 [Rescue status channel](docs/rescue.md): optional Cloudflare Worker + D1 + Access deployment, independent device heartbeat, and recovery confirmation after manual login. Remote login and QR endpoints are not implemented.
 
 Private data stays outside the repo under `~/.local/share/wechat-agent/`. Never publish browser profiles, transcripts, tokens or credentials. Full-permission agents can affect the whole computer; this project is not a sandbox. Unofficial project, not affiliated with Tencent, Anthropic, OpenAI or xAI.
+
+## Optional Cloudflare rescue
+
+Local usage needs no Cloudflare account or configuration. Rescue/status monitoring is disabled by default (`WECHAT_RESCUE_ENABLED=false`). To opt in, copy `.env.example` to private `.env` and supply your own allowed emails, domain, device ID and Cloudflare credentials. See [configuration](docs/runbook/wechat-rescue.md). Enabling monitoring does not enable the experimental QR recovery adapter.

@@ -9,6 +9,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
+from wechat_rescue_config import load_env, enabled, spec, cloudflare_credentials, ConfigError
 
 ROOT = Path(__file__).resolve().parents[1]
 STACK = ROOT / 'infra/cloudflare/wechat-rescue'
@@ -108,13 +109,13 @@ def reconcile(cf, spec, apply=False):
                       'database': 'reuse' if database else 'create',
                       'worker': 'publish authenticated status page',
                       'domain': 'reconcile' if domain else 'create after Access protection',
-                      'allowed_emails': spec['allowed_emails']}, ensure_ascii=False))
+                      'allowed_email_count': len(spec['allowed_emails'])}, ensure_ascii=False))
     if not apply:
         return
     # Access comes FIRST: do not provision a public application if authentication is blocked.
     if not org:
         org = cf.account_call('POST', '/access/organizations', {
-            'name': 'Critdeck Rescue', 'auth_domain': spec['access_team'] + '.cloudflareaccess.com',
+            'name': 'WeChat Rescue', 'auth_domain': spec['access_team'] + '.cloudflareaccess.com',
             'session_duration': spec['session_duration']})
     providers = cf.account_call('GET', '/access/identity_providers')
     otp = next((p for p in providers if p['type'] == 'onetimepin'), None)
@@ -150,6 +151,7 @@ def reconcile(cf, spec, apply=False):
     metadata = {'main_module': 'worker.mjs', 'compatibility_date': '2026-10-01',
                 'bindings': [
                     {'type': 'd1', 'name': 'DB', 'id': database['uuid']},
+                    {'type': 'plain_text', 'name': 'DEVICE_ID', 'text': spec['device_id']},
                     {'type': 'plain_text', 'name': 'ACCESS_DOMAIN', 'text': org['auth_domain']},
                     {'type': 'plain_text', 'name': 'ACCESS_AUD', 'text': app['aud']},
                     {'type': 'plain_text', 'name': 'ALLOWED_EMAILS', 'text': json.dumps(spec['allowed_emails'])},
@@ -169,12 +171,20 @@ def reconcile(cf, spec, apply=False):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--apply', action='store_true')
-    parser.add_argument('--credentials', type=Path, required=True)
+    parser.add_argument('--credentials', type=Path, help='Optional encrypted SOPS credential file')
+    parser.add_argument('--env-file', type=Path)
     args = parser.parse_args()
     try:
-        reconcile(Cloudflare(credentials(args.credentials)), json.loads((STACK / 'stack.json').read_text()), args.apply)
-    except (RuntimeError, APIError) as error:
+        values = load_env(args.env_file)
+        if not enabled(values):
+            print('Cloudflare rescue disabled; no network or deployment changes.')
+            return
+        config = spec(values)
+        reconcile(Cloudflare(cloudflare_credentials(values, args.credentials)), config, args.apply)
+    except ConfigError as error:
         parser.exit(1, str(error) + '\n')
+    except Exception:
+        parser.exit(1, 'Rescue deployment failed; details suppressed to protect credentials.\n')
 
 
 if __name__ == '__main__':

@@ -14,7 +14,7 @@ export function database(){
 const pair=await crypto.subtle.generateKey({name:'RSA-OAEP',modulusLength:2048,publicExponent:new Uint8Array([1,0,1]),hash:'SHA-256'},true,['encrypt','decrypt']);
 const {kty,n,e}=await crypto.subtle.exportKey('jwk',pair.publicKey),publicKey={kty,n,e};
 function heartbeat(DB,state='login_required',time=new Date().toISOString()){
- DB.sqlite.prepare('INSERT OR REPLACE INTO device_heartbeat VALUES (?,?,?,?,NULL)').run('work-mac-joey',state,time,time);
+ DB.sqlite.prepare('INSERT OR REPLACE INTO device_heartbeat VALUES (?,?,?,?,NULL)').run('local-device',state,time,time);
 }
 async function api(DB,method='POST',body={publicKey},options={}){
  const {owner='owner@example.com',path='/api/rescue',enabled='true',headers={}}=options;
@@ -142,4 +142,17 @@ test('isolated rescue web UI: initiate, decrypt dummy image, cancel and hide it'
   assert.equal(await page.locator('#rescue-qr').isVisible(),false);
   assert.equal((await current(DB)).state,'cancelled');assert.equal((await current(DB)).envelope,null);assert.deepEqual(errors,[]);
  }finally{await browser.close();}
+});
+
+test('configured device ID scopes rescue requests and device polling',async()=>{
+ const DB=database(),device='custom-computer',time=new Date().toISOString();
+ DB.sqlite.prepare('INSERT INTO device_heartbeat VALUES (?,?,?,?,NULL)').run(device,'login_required',time,time);
+ const request=new Request('https://rescue.example/api/rescue',{method:'POST',headers:{Origin:'https://rescue.example','X-Rescue-Intent':'1','Content-Type':'application/json'},body:JSON.stringify({publicKey})});
+ const response=await routeRescue(request,{DB,DEVICE_ID:device,RESCUE_QR_ENABLED:'true'},'owner@example.com',{});
+ assert.equal(response.status,201);
+ assert.equal(await current(DB),null);
+ assert.equal((await current(DB,device)).device_id,device);
+ const agent=new RescueDevice({DB,deviceId:device,screen:{state:async()=> 'online'},intake:{}});
+ await agent.tick();
+ assert.equal((await current(DB,device)).state,'failed');
 });

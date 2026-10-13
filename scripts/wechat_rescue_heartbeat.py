@@ -4,9 +4,10 @@ import argparse
 from datetime import datetime, timezone
 import json
 from pathlib import Path
-from wechat_rescue_apply import Cloudflare, credentials
+from wechat_rescue_apply import Cloudflare
+from wechat_rescue_config import load_env, enabled, device_id, required, cloudflare_credentials
 
-DEVICE = 'work-mac-joey'
+DEVICE = 'local-device'
 STATES = {'online', 'offline', 'disconnected', 'login_required', 'unknown'}
 SQL = """INSERT INTO device_heartbeat
 (device_id, connection_state, observed_at, received_at, recovered_at)
@@ -20,14 +21,14 @@ connection_state=excluded.connection_state, observed_at=excluded.observed_at,
 received_at=excluded.received_at"""
 
 
-def telemetry(state, now=None):
+def telemetry(state, now=None, device=DEVICE):
     now = now or datetime.now(timezone.utc)
     if not isinstance(state, dict):
         state = {}
     connection = state.get('connection')
     observed = state.get('lastObservedAt')
     try:
-        if state.get('deviceId') != DEVICE or not isinstance(observed, str):
+        if state.get('deviceId') != device or not isinstance(observed, str):
             raise ValueError('Invalid source')
         instant = datetime.fromisoformat(observed.replace('Z', '+00:00'))
         age = (now - instant).total_seconds()
@@ -35,8 +36,8 @@ def telemetry(state, now=None):
             raise ValueError('Stale observation')
         observed = instant.isoformat(timespec='milliseconds').replace('+00:00', 'Z')
     except (ValueError, TypeError, OverflowError):
-        return {'device_id': DEVICE, 'connection_state': 'unknown', 'observed_at': None}
-    return {'device_id': DEVICE, 'connection_state': connection if isinstance(connection, str) and connection in STATES else 'unknown',
+        return {'device_id': device, 'connection_state': 'unknown', 'observed_at': None}
+    return {'device_id': device, 'connection_state': connection if isinstance(connection, str) and connection in STATES else 'unknown',
             'observed_at': observed}
 
 
@@ -49,18 +50,30 @@ def publish(cf, database, payload):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--state', type=Path, default=Path.home()/'.local/share/zhumi/work-mac-joey/state.json')
-    parser.add_argument('--credentials', type=Path, required=True)
-    parser.add_argument('--database', required=True)
+    parser.add_argument('--state', type=Path)
+    parser.add_argument('--env-file', type=Path)
+    parser.add_argument('--credentials', type=Path)
+    parser.add_argument('--database')
     parser.add_argument('--dry-run', action='store_true')
     args = parser.parse_args()
+    values = load_env(args.env_file)
+    if not enabled(values):
+        print('Cloudflare rescue disabled; no heartbeat sent.')
+        return
+    device = device_id(values)
+    source = args.state or Path(values.get('WECHAT_RESCUE_STATE_PATH') or Path.home()/'.local/share/wechat-agent/health.json')
     try:
-        state = json.loads(args.state.read_text())
+        state = json.loads(source.expanduser().read_text())
+        if isinstance(state, dict) and 'updatedAt' in state and 'state' in state:
+            state = {'deviceId': device, 'lastObservedAt': state['updatedAt'],
+                     'connection': {'connected':'online', 'waiting_for_scan':'login_required',
+                                    'disconnected':'disconnected'}.get(state['state'], 'unknown')}
     except (OSError, ValueError):
         state = {}
-    payload = telemetry(state)
+    payload = telemetry(state, device=device)
     if not args.dry_run:
-        publish(Cloudflare(credentials(args.credentials)), args.database, payload)
+        publish(Cloudflare(cloudflare_credentials(values, args.credentials)),
+                args.database or required(values, 'WECHAT_RESCUE_DATABASE_ID'), payload)
     print(json.dumps({'result': 'dry-run' if args.dry_run else 'published', **payload}))
 
 

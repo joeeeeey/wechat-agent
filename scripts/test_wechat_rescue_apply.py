@@ -5,9 +5,9 @@ from pathlib import Path
 module_spec = importlib.util.spec_from_file_location('rescue', Path(__file__).with_name('wechat_rescue_apply.py'))
 m = importlib.util.module_from_spec(module_spec)
 module_spec.loader.exec_module(m)
-SPEC = {'name': 'wechat-rescue', 'hostname': 'wechat-rescue.critdeck.com', 'zone': 'critdeck.com',
-        'database': 'wechat-rescue', 'access_team': 'critdeck-rescue', 'session_duration': '1h',
-        'allowed_emails': ['owner@example.com']}
+SPEC = {'name': 'wechat-rescue', 'hostname': 'rescue.example.com', 'zone': 'example.com',
+        'database': 'wechat-rescue', 'access_team': 'example-rescue', 'session_duration': '1h',
+        'allowed_emails': ['owner@example.com'], 'device_id': 'local-device'}
 
 
 class FakeCF:
@@ -18,7 +18,7 @@ class FakeCF:
     def call(self, method, path, data=None):
         self.calls.append((method, path))
         if path == '/zones/zone':
-            return {'name': 'critdeck.com', 'account': {'id': 'wrong' if self.wrong_account else self.account}}
+            return {'name': 'example.com', 'account': {'id': 'wrong' if self.wrong_account else self.account}}
         return []
     def account_call(self, method, path, data=None):
         self.calls.append((method, path))
