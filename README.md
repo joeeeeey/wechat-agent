@@ -33,3 +33,7 @@ Private data stays outside the repo under `~/.local/share/wechat-agent/`. Never 
 ## Optional Cloudflare rescue
 
 Local usage needs no Cloudflare account or configuration. Rescue/status monitoring is disabled by default (`WECHAT_RESCUE_ENABLED=false`). To opt in, copy `.env.example` to private `.env` and supply your own allowed emails, domain, device ID and Cloudflare credentials. See [configuration](docs/runbook/wechat-rescue.md). Enabling monitoring does not enable the experimental QR recovery adapter.
+
+## Names, devices and conversational settings
+
+Defaults: 主咪 on the current hostname/OS, with a persistent random device ID. Use `/ai 默认` or `/ai 设置` on first connection. `/ai` remains a fixed entry after renaming; `/ai 查看设置` shows non-secret settings. For multiple computers, enable strict device targeting on **each** installation. See [identity, dialogue and routing](docs/settings.md).
