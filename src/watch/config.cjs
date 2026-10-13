@@ -9,6 +9,7 @@ function defaults(){return {
  schemaVersion:1,workspace:path.join(root,'workspace'),
  assistant:{displayName:'主咪',aliases:['主咪','zhumi']},
  device:{id:randomUUID(),displayName:os.hostname()},
+ response:{language:'中文',style:'简短'},
  monitoring:{hours:24,pollSeconds:20,progressSeconds:45},
  loginReminders:{enabled:true,estimatedHours:24,beforeMinutes:[60,30,10]},
  browser:{channel:'chromium'},
@@ -17,6 +18,7 @@ function defaults(){return {
  attachments:{enabled:true,maxBytes:25*1024*1024},
  execution:{enabled:false},rescue:{enabled:false}
 };}
+const labelValue=v=>typeof v==='string'&&v.trim().length>0&&v.length<=100&&!/[\r\n\x00]/.test(v);
 function validate(c){
  if(!path.isAbsolute(c.workspace||''))throw new Error('workspace must be an absolute path');
  if(!['codex','claude','command'].includes(c.harness?.backend))throw new Error('Unsupported harness backend');
@@ -25,6 +27,7 @@ function validate(c){
  if(c.harness.backend==='codex'&&!['read-only','workspace-write','danger-full-access'].includes(c.harness.sandbox||'workspace-write'))throw new Error('Invalid Codex sandbox');
  for(const text of [c.assistant?.displayName,c.device?.id,c.device?.displayName,...c.assistant?.aliases||[]])if(typeof text!=='string'||!text.trim()||text.length>100||/[\r\n\x00]/.test(text))throw new Error('Invalid identity/alias');
  if(!c.assistant?.aliases?.length)throw new Error('At least one assistant alias is required');
+ if(c.response&&(!labelValue(c.response.language)||!['简短','详细'].includes(c.response.style)))throw new Error('Invalid response preferences');
  const m=c.monitoring;if(!m||!Number.isFinite(m.hours)||m.hours<=0||m.hours>168||!Number.isFinite(m.pollSeconds)||m.pollSeconds<1||m.pollSeconds>300||!Number.isFinite(m.progressSeconds)||m.progressSeconds<10)throw new Error('Invalid monitoring interval/duration');
  const col=c.collection||{};
  if(c.attachments?.maxBytes!==undefined&&(!Number.isSafeInteger(c.attachments.maxBytes)||c.attachments.maxBytes<=0))throw new Error('Invalid attachment byte limit');

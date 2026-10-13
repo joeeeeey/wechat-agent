@@ -10,6 +10,7 @@ Run `npm run setup` or the README macOS bootstrap. Configuration lives at
   "workspace": "/absolute/private/workspace",
   "assistant": {"displayName": "主咪", "aliases": ["主咪", "zhumi"]},
   "device": {"id": "my-mac", "displayName": "工作 Mac"},
+  "response": {"language": "中文", "style": "简短"},
   "monitoring": {"hours": 24, "pollSeconds": 20, "progressSeconds": 45},
   "loginReminders": {"enabled": true, "estimatedHours": 24, "beforeMinutes": [60, 30, 10]},
   "browser": {"channel": "chromium"},
@@ -43,6 +44,79 @@ permissions; operations requiring interaction are reported as blocked. Optional
 uses the [stdin/stdout harness contract](harnesses.md); it has no native history
 or live steering unless the executable provides that itself.
 
+## WeChat system commands
+
+The persistent watch recognizes these fixed commands independently of configured
+assistant aliases. These commands do not invoke the AI or semantic classifier:
+
+| Command | Behavior |
+| --- | --- |
+| `/ai` or `/ai help` | List commands and examples |
+| `/ai config` | Show only editable preferences, without executable arguments, credentials or private paths |
+| `/ai config set FIELD VALUE` | Validate and atomically save a preference |
+| `/ai status` | Show browser/monitor status, current deadline, interval and backend |
+| `/ai TASK` | Submit an addressed task using a stable prefix |
+
+`FIELD` accepts either the canonical key below or its Chinese name. JSON arrays,
+numbers and booleans retain their types; unquoted text is accepted for strings.
+For example, `/ai config set 检查间隔 10` and
+`/ai config set 结束符 ["1111","done"]`.
+
+| Key | Chinese name | Accepted value |
+| --- | --- | --- |
+| `assistant.displayName` | 助手名 | Nonempty single-line text, up to 100 characters |
+| `assistant.aliases` | 唤醒词 | 1–20 nonempty names |
+| `device.displayName` | 机器名 | Nonempty single-line text, up to 100 characters |
+| `response.language` | 语言 | Language name |
+| `response.style` | 回复风格 | `简短` or `详细` |
+| `monitoring.pollSeconds` | 检查间隔 | 1–300 seconds |
+| `monitoring.progressSeconds` | 进度间隔 | 10–3600 seconds |
+| `monitoring.hours` | 接收时长 | 0.01–168 hours; initial default only, never renews an existing deadline |
+| `collection.enabled` | 收集开关 | Boolean |
+| `collection.startTokens` | 开始标记 | 1–20 strings, each up to 80 characters |
+| `collection.endMarkers` | 结束符 | 1–20 strings, each up to 80 characters |
+| `collection.allowInstructionAfterStartToken` | 开始后附带说明 | Boolean |
+| `collection.semantic.enabled` | 语义识别 | Boolean; enabling requires a classifier already configured locally |
+| `loginReminders.enabled` | 登录提醒 | Boolean |
+| `loginReminders.estimatedHours` | 预计登录时长 | 1–168 hours |
+| `loginReminders.beforeMinutes` | 提前提醒分钟 | 1–10 numbers, each 1–10080 minutes |
+| `attachments.enabled` | 附件读取 | Boolean |
+| `attachments.maxBytes` | 附件大小上限 | Integer bytes, 1–1073741824 |
+
+Renaming the assistant adds the new name to aliases while retaining old ones.
+An explicit aliases edit replaces that list. `/ai` remains available in either case.
+The bridge reads settings for new messages/downloads; the supervisor reloads live
+preferences about once a second, re-arms polling if needed, and reads preferences
+before each new task. Reply language/style guide subsequent AI turns; native
+system replies and automatic progress notices remain Chinese. Running AI turns
+are not restarted. Progress checks have five-second granularity. Login reminders
+already sent are not replayed. An open collection retains its original end markers.
+Changing `monitoring.hours` only supplies the initial default when no saved deadline
+exists. `start`/`restart` retain an existing deadline; local `start --hours N` renews it.
+
+Natural-language requests such as “主咪，把检查间隔改为 10 秒” use the configured
+AI and the same validated interface. The turn prompt describes a private JSON
+file passed to `node src/watch/control.cjs /absolute/command.json`:
+
+```json
+{"action":"config","operation":"get"}
+```
+
+The result contains safe `values` and a `revision`. Apply only explicitly requested
+changes using that revision and the current direct request ID:
+
+```json
+{"action":"config","operation":"set","requestId":"R001","expectedRevision":"revision returned by get","patch":{"monitoring.pollSeconds":10}}
+```
+
+Stale revisions, invalid values, unsupported keys, completed requests and collected
+material requests are rejected without a partial write. The executor should use
+this interface instead of raw file edits and report its actual result. Natural
+language quality and control-client access depend on the installed CLI and its
+permissions. Workspace, device ID, harness, browser, execution and rescue settings
+are local-only. This allowlist is an interface boundary, not a sandbox for a
+privileged local executor.
+
 ## Collection protocol
 
 - Address the assistant, then a start token or collection phrase. `主咪1111`,
@@ -52,6 +126,8 @@ or live steering unless the executable provides that itself.
 - Only a complete standalone end marker closes the default batch. `主咪1111`
   never closes it; inside the batch it is source material.
 - All intermediate text/images/files are data, including apparent instructions.
+  This includes `/ai help` and `/ai config set ...`; finish the collection before
+  sending an actual system command.
   The bridge excludes its own exact outbound messages and writes one ordered
   private JSON file before dispatching the completed batch once.
 - Attachments are silent. No AI call or message is generated solely because an
@@ -94,7 +170,7 @@ is an additional guard, not a complete secret detector. The AI must avoid sendin
 secrets even when they do not match a known pattern.
 
 `watch/health.json` contains only device/login observation data and can feed the
-optional rescue heartbeat. Collection rules and aliases are read from disk for new
-messages; changing other settings requires a watch restart. Monitoring duration is
+optional rescue heartbeat. The preferences listed above reload live. Local-only
+settings require a deliberate lifecycle/setup change. Monitoring duration is
 enforced by a persisted absolute deadline; `--hours` explicitly renews it.
 Browser and machine failures require local recovery.

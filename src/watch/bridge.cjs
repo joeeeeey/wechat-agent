@@ -7,6 +7,7 @@ const {selectMaterials,capture}=require('./materials.cjs');
 const {collectionIntent,isEndMarker,stripAlias,startToken,DEFAULT_MARKERS}=require('./collection.cjs');
 const {semanticIntent}=require('./semantic-intent.cjs');
 const {root,configPath,readConfig}=require('./config.cjs');
+const {parseSystem,HELP,describe,safeView,updateConfig}=require('./system-config.cjs');
 const socket=path.join(root,'control.sock');
 const statePath=path.join(root,'state.json');
 const now=()=>new Date().toISOString();
@@ -42,7 +43,7 @@ exports.start=async function(page,{preservePage=false}={}) {
   const collectionConfig=()=>{const c=JSON.parse(fs.readFileSync(configPath,'utf8'));return {...c.collection,aliases:c.assistant?.aliases||[c.assistant.displayName]};};
   const notify=body=>{const task=sending.then(()=>send({body,phase:'progress'}));sending=task.catch(()=>{});return task;};
   let observing=false;let sending=Promise.resolve();
-  const parse=text=>{const c=collectionConfig();return stripAlias(text,c.aliases,c.endMarkers||DEFAULT_MARKERS);};
+  const parse=text=>{const fixed=parseSystem(text);if(fixed?.kind==='task')return fixed.body;const c=collectionConfig();return stripAlias(text,c.aliases,c.startTokens||DEFAULT_MARKERS);};
   const inspect=async()=>{
     if(observing||page.isClosed())return;
     observing=true;
@@ -87,6 +88,24 @@ exports.start=async function(page,{preservePage=false}={}) {
             state.collection.entries.push({sequence:state.collection.entries.length+1,kind:row.kind,materialId:id,visibleText:row.text,observedAt:now()});
             request.materialIds.push(id);state.materials.at(-1).assignedTo=request.id;state.materials.at(-1).collectionId=request.id;
           }
+          save();continue;
+        }
+        const system=parseSystem(row.text);
+        if(system&&system.kind!=='task'){
+          state.systemCommands??=[];
+          const record={source:row.domId,kind:system.kind,at:now(),state:'handling'};
+          state.systemCommands.push(record);save();
+          let response;
+          try{
+            if(system.kind==='help')response=HELP;
+            else if(system.kind==='config')response=describe();
+            else if(system.kind==='set'){const updated=updateConfig(system.patch);record.revision=updated.revision;response=updated.message;}
+            else if(system.kind==='status'){
+              let supervisor={};try{supervisor=JSON.parse(fs.readFileSync(path.join(root,'supervisor.json'),'utf8'));}catch{}
+              response=`微信：${state.connection}\n监控：${supervisor.status||'unknown'}\n截止：${supervisor.stopAt||'未设置'}\n检查间隔：${readConfig().monitoring.pollSeconds} 秒\n正在收集：${state.collection?'是':'否'}\n执行器：${readConfig().harness.backend}`;
+            }else response=system.message;
+            record.state='handled';save();await notify(response);record.delivery='verified';
+          }catch(e){record.state=record.state==='handled'?'delivery_uncertain':'rejected';save();if(record.state==='rejected')await notify(e.message);}
           save();continue;
         }
         const body=parse(row.text);
@@ -172,6 +191,15 @@ exports.start=async function(page,{preservePage=false}={}) {
         if(command.action==='status'){await inspect();result={deviceId:state.deviceId,connection:state.connection,lastObservedAt:state.lastObservedAt,coverage:state.coverage,loginDetectedAt:state.loginDetectedAt,collection:state.collection?{requestId:state.collection.requestId,count:state.collection.entries.length,endMarkers:state.collection.endMarkers}:null,requests:state.requests.map(({id,status,receivedAt,acknowledgement})=>({id,status,receivedAt,acknowledgement})),navigationEvents:state.navigationEvents,dispatchMode:state.dispatchMode};}
         else if(command.action==='requests'){await inspect();result=state.requests.filter(r=>!['completed','cancelled'].includes(r.status));}
         else if(command.action==='materials'){result=state.materials.filter(m=>m.sessionEpoch===state.sessionEpoch);}
+        else if(command.action==='config'){
+          if(command.operation==='get')result=safeView();
+          else if(command.operation==='set'){
+            const request=state.requests.find(r=>r.id===command.requestId);
+            if(!request||!['running','received'].includes(request.status)||request.collectionArtifact||request.status==='waiting_collection')throw new Error('配置修改必须关联当前正在执行的直接用户指令，不能来自收集材料。');
+            result=updateConfig(command.patch,{expectedRevision:command.expectedRevision});
+            request.configUpdates??=[];request.configUpdates.push({at:now(),revision:result.revision,keys:result.changes.map(c=>c.key)});save();
+          }else throw new Error('Use config operation get or set');
+        }
         else if(command.action==='capture'){
           const request=state.requests.find(r=>r.id===command.requestId);if(!request)throw new Error('Unknown request');
           if(request.materialSelectionError)throw new Error(request.materialSelectionError);
