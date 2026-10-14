@@ -62,7 +62,10 @@ never falls back to a public image URL. If the QR cannot be read, it is hidden.
 
 ## Operations and validation
 
-`watch/rescue-health.json` records only enabled/status/last-check/pause information.
+`watch/rescue-health.json` records enabled/status/last-check/pause information
+and the count of browser contexts pending cleanup. Closing a retired browser runs
+in the background: a stalled Chromium shutdown cannot hold intake paused.
+Recovery is marked completed only after intake has resumed successfully.
 The browser caller runs every five seconds independently of the fixed task poll
 interval. Health and credentials remain in the private runtime directory.
 A malformed pause record fails closed. If cloud access is unavailable, the caller

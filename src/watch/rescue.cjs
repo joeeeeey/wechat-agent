@@ -64,7 +64,7 @@ async function startRescue(page){
    }
    const paused=gate.read();
    if(paused.paused&&paused.attemptId&&await screen.state()==='online')await intake.resume(paused.attemptId);
-   atomic(path.join(root,'rescue-health.json'),{enabled:true,connection,lastCheckAt:new Date().toISOString(),intakePaused:gate.read().paused});
+   atomic(path.join(root,'rescue-health.json'),{enabled:true,connection:await screen.state(),lastCheckAt:new Date().toISOString(),intakePaused:gate.read().paused,cleanupPending:screen.retiredContexts?.size||0});
   }catch{
    atomic(path.join(root,'rescue-health.json'),{enabled:true,status:'unavailable',lastCheckAt:new Date().toISOString(),intakePaused:gate.read().paused});
    // Manual login may restore the existing page even during a cloud outage.

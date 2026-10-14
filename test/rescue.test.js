@@ -99,6 +99,13 @@ test('cancellation during intake pause prevents pixel read',async()=>{
  const device=new RescueDevice({DB,screen:{state:async()=>'login_required',qrPNG:async()=>{reads++;return png;}},intake:{pause:async()=>{await api(DB,'POST',{id:row.id},{path:'/api/rescue/cancel'});},isPaused:async()=>true}});
  await device.tick();assert.equal(reads,0);assert.equal((await current(DB)).state,'cancelled');
 });
+test('online is not reported completed until intake resume succeeds',async()=>{
+ const {DB,row}=await setup();await claim(DB,row.id);await transition(DB,row.id,'preparing','awaiting_scan',null);
+ let rejectResume=true,paused=true;
+ const device=new RescueDevice({DB,screen:{state:async()=>'online'},intake:{isPaused:async()=>paused,resume:async()=>{if(rejectResume)throw Error('Resume unavailable');paused=false;}}});
+ await assert.rejects(()=>device.tick(),/Resume unavailable/);assert.equal((await current(DB)).state,'awaiting_scan');
+ rejectResume=false;await device.tick();assert.equal(paused,false);assert.equal((await current(DB)).state,'completed');
+});
 test('isolated DOM: capture only dummy square, encrypt, await observed online, clear payload',async()=>{
  const browser=await chromium.launch({headless:true,channel:'chromium'});
  try {
