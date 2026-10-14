@@ -15,6 +15,15 @@ class RecoveryScreen{
   Object.assign(this,{currentPage:page,ExistingLoginScreen,chromium,channel,lifecycle});this.staged=null;
  }
  get page(){return this.staged?.page||this.currentPage;}
+ retire(context){
+  // Chromium shutdown can stall indefinitely after an account/session switch.
+  // Cleanup must never hold the new login's intake gate or the rescue tick.
+  this.retiredContexts??=new Set();this.retiredContexts.add(context);
+  void Promise.resolve().then(()=>context.close()).then(
+   ()=>this.retiredContexts.delete(context),
+   ()=>{} // Keep the pending context recorded; never persist raw browser errors.
+  );
+ }
  adapter(){return new this.ExistingLoginScreen(this.page,{online:'.page-logined textarea.chat-panel__input-container',login:'.login-scan__panel',qr:'.qrcode img.qrcode-img',refresh:'.qrcode .mask__refresh'});}
  async state(){return this.adapter().state();}
  async prepare(attemptId){
@@ -28,7 +37,7 @@ class RecoveryScreen{
    await page.goto('https://filehelper.weixin.qq.com/',{waitUntil:'domcontentloaded',timeout:20000});
    await page.locator('.qrcode img.qrcode-img').waitFor({state:'visible',timeout:15000});
    this.staged={page,context,attemptId,profile};
-  }catch{await context.close();throw Error('Could not prepare login page');}
+  }catch{this.retire(context);throw Error('Could not prepare login page');}
  }
  async qrPNG(){
   // Retain refresh throttling across ticks.
@@ -46,8 +55,8 @@ class RecoveryScreen{
   await require('./bridge.cjs').start(next.page);
   this.currentPage=next.page;this.staged=null;
   atomic(path.join(root,'active-browser.json'),{profile:next.profile,headless:true,adoptedAt:new Date().toISOString()});
-  await previous.close();
+  this.retire(previous);
  }
- async discard(){if(this.staged){const context=this.staged.context;this.staged=null;await context.close();}}
+ async discard(){if(this.staged){const context=this.staged.context;this.staged=null;this.retire(context);}}
 }
 module.exports={RecoveryScreen,ownLifecycle};

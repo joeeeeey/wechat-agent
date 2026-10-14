@@ -15,8 +15,8 @@ export class RescueDevice {
         // Completion requires an observed chat UI, not merely disappearance of the QR.
         const state=await this.screen.state();
         if(state==='online'){
-          await transition(this.DB,row.id,'awaiting_scan','completed',null,Date.now(),this.deviceId);
           if(await this.intake.isPaused(row.id))await this.intake.resume?.(row.id);
+          await transition(this.DB,row.id,'awaiting_scan','completed',null,Date.now(),this.deviceId);
         }else if(state==='login_required'){
           try{
           const png=await this.screen.qrPNG();

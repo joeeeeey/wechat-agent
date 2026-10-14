@@ -26,9 +26,22 @@ test('online QR generation stages a separate page; cancel preserves it and confi
   assert.ok((await screen.qrPNG()).length>0);
   await assert.rejects(()=>screen.adopt(),/not confirmed/);
   await screen.discard();assert.equal(screen.page,oldPage);assert.equal(await screen.state(),'online');
-  await screen.prepare('two');const replacement=screen.page;await replacement.setContent(online);await screen.adopt();
-  assert.equal(screen.currentPage,replacement);assert.equal(oldPage.isClosed(),true);assert.equal(replacement.isClosed(),false);
-  assert.notEqual(globalThis.zhumiBridge.state.sessionEpoch,epoch);assert.equal(globalThis.zhumiBridge.state.requests.length,0);
+  await screen.prepare('two');const replacement=screen.page;await replacement.setContent(online);
+  const closeOld=oldContext.close.bind(oldContext);let closeStarted=false;
+  oldContext.close=()=>{closeStarted=true;return new Promise(()=>{});};
+  const gate=require('../src/watch/rescue-intake.cjs');gate.pause('two');
+  let deadline;
+  try{await Promise.race([screen.adopt(),new Promise((_,reject)=>{deadline=setTimeout(()=>reject(Error('Adoption blocked on old context cleanup')),2000);})]);}
+  finally{clearTimeout(deadline);}
+  assert.equal(closeStarted,true);assert.equal(screen.retiredContexts.size,1);
+  const {call}=require('../src/watch/control.cjs');
+  assert.equal((await call({action:'rescue_resume',attemptId:'two'})).resumed,true);
+  assert.equal(gate.read().paused,false,'Successful login resumes even if old Chromium never closes');
+  assert.equal(screen.currentPage,replacement);assert.equal(replacement.isClosed(),false);
+  await replacement.locator('.msg-list').evaluate(e=>e.insertAdjacentHTML('beforeend','<li class="msg-list__item"><div class="msg-text">/ai 在吗</div></li>'));
+  assert.equal((await call({action:'requests'})).at(-1).body,'在吗','New input is processed through the adopted page');
+  oldContext.close=closeOld;await closeOld();
+  assert.notEqual(globalThis.zhumiBridge.state.sessionEpoch,epoch);assert.equal(globalThis.zhumiBridge.state.requests.length,1);
  }finally{
   if(globalThis.zhumiBridge){await new Promise(r=>globalThis.zhumiBridge.server.close(r));delete globalThis.zhumiBridge;}
   await browser.close();await fs.rm(home,{recursive:true,force:true});
