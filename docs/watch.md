@@ -19,7 +19,7 @@ Run `npm run setup` or the README macOS bootstrap. Configuration lives at
     "approvalPolicy": "never", "sandbox": "workspace-write"
   },
   "collection": {
-    "enabled": true, "startTokens": ["1111"],
+    "enabled": true, "maxMessages": 30, "startTokens": ["1111"],
     "allowInstructionAfterStartToken": true,
     "endMarkers": ["1111", "mmmm"], "allowAssistantPrefixOnEnd": false,
     "semantic": {"enabled": false, "timeoutMs": 25000, "minimumConfidence": 0.9, "maxInputChars": 1600}
@@ -73,6 +73,7 @@ For example, `/ai config set 回复风格 详细` and
 | `monitoring.progressSeconds` | 进度间隔 | Read-only in WeChat/AI; local config and restart required (default 45 seconds) |
 | `monitoring.hours` | 接收时长 | 0.01–168 hours; initial default only, never renews an existing deadline |
 | `collection.enabled` | 收集开关 | Boolean |
+| `collection.maxMessages` | 收集上限 | Integer 1–1000; default 30, captured when each batch starts |
 | `collection.startTokens` | 开始标记 | 1–20 strings, each up to 80 characters |
 | `collection.endMarkers` | 结束符 | 1–20 strings, each up to 80 characters |
 | `collection.allowInstructionAfterStartToken` | 开始后附带说明 | Boolean |
@@ -90,7 +91,7 @@ preferences about once a second and reads preferences
 before each new task. Reply language/style guide subsequent AI turns; native
 system replies and automatic progress notices remain Chinese. Running AI turns
 are not restarted. Progress checks have five-second granularity. Login reminders
-already sent are not replayed. An open collection retains its original end markers.
+already sent are not replayed. An open collection retains its original end markers and message limit.
 Polling and progress intervals are captured at startup: neither native commands
 nor AI config RPC can change them. Even a raw config-file edit cannot change a
 running timer; a deliberate local watch restart is required. `/ai status` shows
@@ -125,6 +126,12 @@ privileged local executor.
 
 - Address the assistant, then a start token or collection phrase. `主咪1111`,
   `主咪1111 总结下面的讨论`, and `主咪收集` start a batch.
+- A batch automatically closes and dispatches once at `collection.maxMessages`
+  (default 30, including older configs). Each text/image/file/unsupported row
+  counts once; the start/end commands and exact own replies do not count.
+  The final item is retained. The remaining texts in the same observed burst
+  are passive materials, never commands triggered by hitting the cap. Later
+  messages are outside the batch; send a fresh start to collect another batch.
 - A start token followed by a longer number or Latin identifier is not matched.
 - `startPatterns` optionally replaces the default regular-expression patterns.
 - Only a complete standalone end marker closes the default batch. `主咪1111`
@@ -141,7 +148,11 @@ privileged local executor.
   followed by login marks its coverage uncertain. Missing history is not recovered.
 
 Semantic matching is optional and only applies to addressed messages outside a
-collection after deterministic rules miss. Configure `semantic.backend` as
+collection after deterministic rules miss AND collection/future-batch vocabulary
+is present. Ordinary greetings and tasks bypass this subprocess entirely, so a
+classifier outage cannot block “在吗” or routine PR/file requests. Candidate
+classification failures ask for an explicit collection start and identify the
+service failure rather than claiming the user requested collection. Configure `semantic.backend` as
 `codex` or `claude`, `command` as the executable, and `args: []`. The bounded
 classifier returns intent JSON; it does not receive the collected conversation.
 Uncertain/failed classification asks for clarification rather than dispatching.

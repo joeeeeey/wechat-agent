@@ -14,6 +14,7 @@ const fields={
  'monitoring.progressSeconds':{name:'进度间隔',readOnly:true},
  'monitoring.hours':{name:'接收时长',check:number(0.01,168),effect:'next_start'},
  'collection.enabled':{name:'收集开关',check:bool},
+ 'collection.maxMessages':{name:'收集上限',check:v=>Number.isSafeInteger(v)&&v>=1&&v<=1000},
  'collection.startTokens':{name:'开始标记',check:list},
  'collection.endMarkers':{name:'结束符',check:list},
  'collection.allowInstructionAfterStartToken':{name:'开始后附带说明',check:bool},
@@ -30,6 +31,7 @@ const revision=c=>crypto.createHash('sha256').update(JSON.stringify(c)).digest('
 function safeView(c=readConfig()){
  const values={},readOnly={};for(const [key,spec] of Object.entries(fields)){const value=get(c,key);if(value!==undefined)(spec.readOnly?readOnly:values)[key]=value;}
  values['response.language']??='中文';values['response.style']??='简短';
+ values['collection.maxMessages']??=30;
  return {revision:revision(c),values,readOnly,localOnly:['workspace','device.id','harness','browser','execution','rescue','monitoring.pollSeconds','monitoring.progressSeconds'],note:'检查/反馈间隔为只读，仅能在本机配置并重启 watch；运行期间固定，不热更新。配置不包含密钥、执行器参数或私有路径。接收时长仅用于尚无截止时间的首次启动；已有监控需本机 start --hours 显式续期。'};
 }
 function canonical(key){return Object.hasOwn(fields,key)?key:Object.keys(fields).find(k=>fields[k].name===key);}
@@ -46,7 +48,7 @@ function updateConfig(patch,{expectedRevision}={}){
  }
  if(Object.keys(patch).some(k=>canonical(k)==='assistant.displayName'))next.assistant.aliases=[...new Set([next.assistant.displayName,...next.assistant.aliases])];
  validate(next);atomic(configPath,next);
- return {...safeView(next),changes,message:changes.map(({key,effect})=>`${fields[key].name}（${key}）：${JSON.stringify(get(next,key))} — ${effect==='next_start'?'仅首次启动默认值；已有监控需本机 start --hours 续期':'已保存，自动生效；后续任务使用新值'}`).join('\n')+'\n不刷新浏览器。正在收集的批次沿用开始时的结束符。'};
+ return {...safeView(next),changes,message:changes.map(({key,effect})=>`${fields[key].name}（${key}）：${JSON.stringify(get(next,key))} — ${effect==='next_start'?'仅首次启动默认值；已有监控需本机 start --hours 续期':'已保存，自动生效；后续任务使用新值'}`).join('\n')+'\n不刷新浏览器。正在收集的批次沿用开始时的结束符和条数上限。'};
 }
 function describe(c=readConfig()){
  const view=safeView(c);

@@ -14,7 +14,7 @@ function defaults(){return {
  loginReminders:{enabled:true,estimatedHours:24,beforeMinutes:[60,30,10]},
  browser:{channel:'chromium'},
  harness:{backend:'codex',command:'codex',args:[],approvalPolicy:'never',sandbox:'workspace-write'},
- collection:{enabled:true,startTokens:['1111'],allowInstructionAfterStartToken:true,endMarkers:['1111','mmmm'],allowAssistantPrefixOnEnd:false,semantic:{enabled:false,timeoutMs:25000,minimumConfidence:0.9,maxInputChars:1600}},
+ collection:{enabled:true,maxMessages:30,startTokens:['1111'],allowInstructionAfterStartToken:true,endMarkers:['1111','mmmm'],allowAssistantPrefixOnEnd:false,semantic:{enabled:false,timeoutMs:25000,minimumConfidence:0.9,maxInputChars:1600}},
  attachments:{enabled:true,maxBytes:25*1024*1024},
  execution:{enabled:false},rescue:{enabled:false}
 };}
@@ -30,6 +30,7 @@ function validate(c){
  if(c.response&&(!labelValue(c.response.language)||!['简短','详细'].includes(c.response.style)))throw new Error('Invalid response preferences');
  const m=c.monitoring;if(!m||!Number.isFinite(m.hours)||m.hours<=0||m.hours>168||!Number.isFinite(m.pollSeconds)||m.pollSeconds<1||m.pollSeconds>300||!Number.isFinite(m.progressSeconds)||m.progressSeconds<10)throw new Error('Invalid monitoring interval/duration');
  const col=c.collection||{};
+ if(col.maxMessages!==undefined&&(!Number.isSafeInteger(col.maxMessages)||col.maxMessages<1||col.maxMessages>1000))throw new Error('collection.maxMessages must be an integer from 1 to 1000');
  if(c.attachments?.maxBytes!==undefined&&(!Number.isSafeInteger(c.attachments.maxBytes)||c.attachments.maxBytes<=0))throw new Error('Invalid attachment byte limit');
  if(c.loginReminders&&(!Number.isFinite(c.loginReminders.estimatedHours)||c.loginReminders.estimatedHours<=0||!Array.isArray(c.loginReminders.beforeMinutes)||c.loginReminders.beforeMinutes.some(m=>!Number.isFinite(m)||m<=0)))throw new Error('Invalid login reminder settings');
  for(const list of [col.startTokens||['1111'],col.endMarkers||['1111','mmmm']])if(!Array.isArray(list)||!list.length||list.some(v=>typeof v!=='string'||!v.trim()||v.length>80||/[\r\n]/.test(v)))throw new Error('Invalid collection markers');
