@@ -1,7 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
-const {collectionIntent,isEndMarker,stripAlias}=createRequire(import.meta.url)('../src/watch/collection.cjs');
+const {collectionIntent,collectionCandidate,isEndMarker,stripAlias}=createRequire(import.meta.url)('../src/watch/collection.cjs');
+test('only collection-related language goes to optional semantic routing',()=>{
+ for(const body of ['在吗','在吗？','你好','帮我检查这个 PR','总结刚才的聊天','读取附件 A1'])assert.equal(collectionCandidate(body),false,body);
+ for(const body of ['收集是什么意思','我接下来会搬几段群里的讨论过来，先攒着，等我说完再一起看','我待会发你一些截图','先别回复，等我发完'])assert.equal(collectionCandidate(body),true,body);
+});
 test('collection intent recognizes short and natural phrasings',()=>{
  for(const s of ['收集','开始收集聊天','下面的聊天记录你都要读取下','帮我收集接下来的聊天记录','我发你一堆聊天','收集，帮我总结争议点'])assert.equal(collectionIntent(s),true,s);
  for(const s of ['不要收集','收集是什么意思','如何实现收集聊天功能','查看这个 PR'])assert.equal(collectionIntent(s),false,s);

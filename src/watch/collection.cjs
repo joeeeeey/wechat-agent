@@ -1,4 +1,12 @@
 const DEFAULT_MARKERS=['1111','mmmm'];
+const DEFAULT_MAX_MESSAGES=30;
+function collectionCandidate(body){
+ // Semantic collection detection is optional routing, not a gate on every task.
+ // Require collection vocabulary or a future-batch/holding cue first.
+ return /收集|攒着|攒一|先存|先记|先别(?:处理|回复)|等我(?:发完|说完)|等.*一起(?:看|处理|总结)/u.test(body)
+  || /(?:接下来|下面|稍后|一会儿|等会|准备|将要|待会)[\s\S]{0,100}(?:发|转|搬|贴|消息|聊天|材料|记录)/u.test(body)
+  || /(?:发|转|搬|贴)[\s\S]{0,40}(?:一批|一堆|几段|多条|一些聊天|几条消息)/u.test(body);
+}
 function startToken(body,config={}){
  const s=body.trim();
  for(const token of config.startTokens||['1111']){
@@ -38,4 +46,4 @@ function isEndMarker(text,markers=DEFAULT_MARKERS,config={}){
  const body=stripAlias(text,config.aliases||['主咪','zhumi'],markers);
  return body!==null&&markers.includes(body);
 }
-module.exports={collectionIntent,isEndMarker,stripAlias,startToken,DEFAULT_MARKERS};
+module.exports={collectionIntent,collectionCandidate,isEndMarker,stripAlias,startToken,DEFAULT_MARKERS,DEFAULT_MAX_MESSAGES};
