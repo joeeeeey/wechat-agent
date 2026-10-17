@@ -1,0 +1,66 @@
+name: Windows runner smoke
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/windows-smoke.yml'
+      - 'package*.json'
+      - 'src/**'
+      - 'test/**'
+      - 'scripts/setup.mjs'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/windows-smoke.yml'
+      - 'package*.json'
+      - 'src/**'
+      - 'test/**'
+      - 'scripts/setup.mjs'
+
+permissions:
+  contents: read
+
+jobs:
+  windows-smoke:
+    # Standard hosted runner; free compute for this public repository.
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify native Windows environment
+        run: |
+          node -e "const assert = require('node:assert/strict'); assert.equal(process.platform, 'win32'); console.log(JSON.stringify({platform:process.platform,arch:process.arch,node:process.version,os:require('node:os').release()}));"
+          Write-Output "Runner OS: $env:RUNNER_OS; image: $env:ImageOS $env:ImageVersion"
+      - run: npm ci
+      - run: npx playwright install chromium
+      - name: Run portable logic and isolated browser fixtures
+        run: node --test test/browser.test.js test/settings.test.js test/watch-collection.test.js test/watch-system-config.test.js
+      - name: Confirm unsupported lifecycle is reported clearly
+        shell: pwsh
+        run: |
+          @'
+          const assert = require('node:assert/strict');
+          const {spawnSync} = require('node:child_process');
+          for (const file of ['scripts/setup.mjs', 'src/watch/cli.cjs']) {
+            const result = spawnSync(process.execPath, [file], {encoding:'utf8', timeout:15000});
+            assert.ifError(result.error);
+            assert.equal(result.status, 1);
+            assert.match(result.stderr, /macOS only/);
+            console.log(`${file}: expected macOS-only limitation confirmed`);
+          }
+          '@ | node
+      - name: Record verification scope
+        shell: pwsh
+        run: |
+          @'
+          ## Native Windows runner verified
+          - Standard windows-latest runner, Node 22 and npm dependencies.
+          - Playwright Chromium runs the isolated DOM login/send/logout fixture.
+          - Configuration, identity and collection logic tests pass.
+          - Setup/watch still intentionally reject Windows. This is not product installation or live WeChat/AI acceptance.
+          - No account credentials, real QR codes or real WeChat sessions used.
+          '@ >> $env:GITHUB_STEP_SUMMARY

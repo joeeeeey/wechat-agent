@@ -6,6 +6,8 @@ Guided installation and persistent watch currently support **macOS only**, inclu
 
 Native Windows, WSL2 and Linux are not supported setup targets yet. Both setup and watch explicitly check for macOS. The current implementation also relies on `/dev/tty`, POSIX process inspection and Unix-domain control sockets; optional rescue heartbeat installation uses macOS LaunchAgents. Windows support requires runtime and installer changes plus platform testing, not just PowerShell instructions. Do not bypass the guards or recommend WSL2 as an already supported workaround.
 
+The **Windows runner smoke** GitHub Actions workflow uses standard `windows-latest` to check Node 22, dependency installation, portable configuration/collection logic and an isolated Playwright Chromium login/send/logout fixture. It also verifies the current setup/watch platform rejection. These checks provide a Windows development test environment; they do not establish Windows installation, real WeChat login or Codex/Claude execution support.
+
 ## Current macOS guided setup
 
 Use the one-command installer in [README](../README.md), or run `npm ci` and
