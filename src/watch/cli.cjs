@@ -4,6 +4,7 @@ const path=require('node:path');
 const {spawn,execFileSync}=require('node:child_process');
 const {home,root,readConfig,atomic}=require('./config.cjs');
 const {call}=require('./control.cjs');
+const {connectedMessage}=require('./onboarding.cjs');
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 process.umask(0o077);
 function alive(pid){if(!Number.isInteger(pid)||pid<1)return false;try{process.kill(pid,0);return true;}catch(e){return e.code!=='ESRCH';}}
@@ -80,7 +81,7 @@ async function start({hours,restartBrowser=false}){
   if(!alive(pid))throw Error('Watch startup failed. Inspect '+path.join(root,'supervisor.log'));
   const s=read('supervisor.json');
   if(s.pid===pid&&s.lastCheckAt&&s.lastCheckAt!==previous.lastCheckAt){
-   await call({action:'respond',phase:'progress',body:`已连接，我会每 ${c.monitoring.pollSeconds} 秒检查新消息 🐾\n发“${c.assistant.aliases[0]}”加任务；收集聊天可发“${c.assistant.aliases[0]}1111 总结下面的聊天”，最后单独发 1111 或 mmmm。图片和文件单独到达不会触发回复。`});
+   await call({action:'respond',phase:'progress',body:connectedMessage(c)});
    console.log(JSON.stringify(await status(),null,2));return;
   }
   await sleep(1000);
