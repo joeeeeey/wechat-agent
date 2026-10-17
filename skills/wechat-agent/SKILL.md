@@ -1,12 +1,13 @@
 ---
 name: wechat-agent
-description: Install, configure, and operate a macOS WeChat File Helper watch using an already configured Codex or Claude CLI, with local attachments and batched forwarded-chat collection.
+description: Install, configure, operate or uninstall a macOS WeChat File Helper watch using an already configured Codex or Claude CLI, with local attachments and batched forwarded-chat collection.
 ---
 
 # WeChat Agent
 
 The entire repository is required. Resolve [setup](../../docs/setup.md) and [watch configuration](../../docs/watch.md) relative to this file.
 
+- For an uninstall request, use the local agent and follow [uninstall](../../docs/uninstall.md). Inspect installation ownership and active work first. `stop` preserves the browser; close only this installation's dedicated browser afterward. Remove only its program/launcher/skill links and exclusive local services; preserve private data by default, project workspaces and CLI credentials/history always unless separately requested. Cloud resource deletion is separate. Never uninstall from the active WeChat executor or use broad process-name kills.
 - Detect the installation host before installing dependencies. The supported setup and watch lifecycle currently require macOS. A skill can be discovered on Windows, but that does not make this runtime Windows-compatible: native Windows, WSL2 and Linux are not supported installation targets. Explain this before running the macOS bootstrap; do not remove platform guards or present a shell translation as Windows support. See [platform scope](../../docs/setup.md#platform-support).
 - For a new Mac installation, use the README bootstrap or `npm ci` then `npm run setup` in the repo. The wizard detects an installed Codex/Claude CLI, chooses private workspace/identity/permissions, optionally installs this skill and prepares rescue configuration, then launches a dedicated Playwright browser.
 - After setup, explain what the user can type in WeChat: `/ai help` for commands, `/ai config` for current settings, `/ai status` for readiness/deadline, and `/ai config set 回复风格 详细` for an immediate preference change. Use the configured alias for natural-language examples; assistant/alias/device names are customizable. The connected message includes these hints. Configuration commands inside a collection are materials, so finish the batch first.

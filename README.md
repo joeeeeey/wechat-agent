@@ -32,6 +32,20 @@ curl -fsSL https://raw.githubusercontent.com/joeeeeey/wechat-agent/main/scripts/
 
 ## 怎么用
 
+### 支持哪些 AI agent？
+
+不只支持 Codex。安装前先登录对应 CLI，setup 会检测并让你选择：
+
+| 执行器 | 当前接入 | 会话与后续消息 |
+| --- | --- | --- |
+| Codex CLI | 内置 app-server 适配器 | 保留原生 thread，支持执行中追加指令 |
+| Claude Code CLI | 内置 JSON print 适配器 | 保留原生 session，通过 `--resume` 延续；新任务排队 |
+| 其他本地 AI agent CLI | 可配置 `command` 通用适配器 | 需要符合 stdin/stdout 协议；原生会话延续由包装器实现 |
+
+**Claude 已有代码支持，不需要另写适配器。** 安装并登录兼容版本的 Claude Code 后，在 setup 中选择 `claude` 即可；安装器会检查必需参数。真实微信端到端目前主要验证了 Mac/Codex，Claude 的会话恢复有隔离测试，仍需在你的账号上完成扫码、执行和续聊验收。
+
+其他 agent 的基本接入通常只需一个本地包装器：从 stdin 读任务，用明确参数调用 CLI，把最终结果写到 stdout、诊断写到 stderr，并返回正确退出码。要支持原生会话恢复、运行中追加指令、进度事件或取消，则需要进一步适配执行器接口。不能直接填一个模型名就接入。详见[执行器协议](docs/harnesses.md)。
+
 默认唤醒名是 `主咪` / `zhumi`。例如：
 
 ```text
@@ -128,5 +142,17 @@ npm run setup
 `/ai` 系统命令和热更新已通过隔离浏览器及执行器测试；尚未在真实微信和真实 AI 上验证自然语言改配置的完整流程。
 
 此项目不是权限沙箱。安装时显式选择执行范围；Codex 默认工作区写入，Claude 沿用本地权限，不自动加跳过审批参数。附件与聊天记录只是材料，不是新权限。回复可见仅代表网页端显示，不证明手机已读。
+
+## 用自然语言卸载
+
+在本机 Codex / Claude 中发送（不要从即将关闭的微信通道发起）：
+
+> 请帮我卸载 WeChat Agent。先读取安装目录里的 skill 和 docs/uninstall.md，确认安装位置及运行状态。如果有正在执行的任务，请告诉我，等任务结束后再卸载。停止它的监控和专用浏览器，移除程序、启动入口，以及 Codex/Claude 中对应的 wechat-agent skill。如果配置过救援，检查并清理它专属的本机后台服务。默认保留配置、下载文件和会话数据，并告诉我保留在哪里。不要删除项目工作区、共享依赖或 Codex/Claude 的登录凭据；云端救援资源是否删除，单独问我。完成后验证没有残留进程。
+
+若还要删除本地运行数据，可补充：
+
+> 我不需要保留 WeChat Agent 的本地配置、下载文件、浏览器资料和运行记录。请列出准备删除的专属目录，确认范围后清理；保留我的项目工作区和 Codex/Claude 原生历史会话。
+
+当前没有 `uninstall` 子命令。Agent 应按[卸载说明](docs/uninstall.md)检查实际安装后清理；`stop` 只停止 watch/执行器，**不会关闭专用浏览器，也不会卸载程序**。
 
 非官方项目，与腾讯、OpenAI、Anthropic 无隶属关系。
