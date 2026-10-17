@@ -7,6 +7,21 @@ import {spawnSync} from 'node:child_process';
 import {createRequire} from 'node:module';
 import {renderLauncher} from '../scripts/setup.mjs';
 const {defaults,validate}=createRequire(import.meta.url)('../src/watch/config.cjs');
+const {connectedMessage}=createRequire(import.meta.url)('../src/watch/onboarding.cjs');
+const {stripAlias,collectionIntent,isEndMarker}=createRequire(import.meta.url)('../src/watch/collection.cjs');
+test('connected collection examples work with renamed aliases and custom marker settings',()=>{
+ for(const allowInstructionAfterStartToken of [true,false]){
+  const c=defaults();c.assistant.aliases=['helper'];
+  c.collection={...c.collection,startTokens:['BEGIN'],endMarkers:['DONE'],allowInstructionAfterStartToken};
+  const message=connectedMessage(c);
+  const start=message.match(/收集聊天可发“([^”]+)”/)[1];
+  const end=message.match(/最后单独发 “([^”]+)”/)[1];
+  assert.equal(collectionIntent(stripAlias(start,c.assistant.aliases,c.collection.startTokens),c.collection),true);
+  assert.equal(isEndMarker(end,c.collection.endMarkers,c.collection),true);
+  c.collection.enabled=false;
+  assert.equal(connectedMessage(c).includes('收集聊天可发'),false);
+ }
+});
 test('guided configuration requires opt-in and validates executable settings',()=>{
  const c=defaults();assert.equal(c.execution.enabled,false);assert.equal(c.rescue.enabled,false);assert.equal(c.harness.sandbox,'workspace-write');assert.equal(validate(c),c);
  assert.throws(()=>validate({...c,workspace:'relative'}),/absolute/);

@@ -22,6 +22,14 @@ curl -fsSL https://raw.githubusercontent.com/joeeeeey/wechat-agent/main/scripts/
 
 所有私人配置、会话元数据、下载文件和浏览器资料保存在 `~/.local/share/wechat-agent/`，不进入仓库。CLI 登录凭据继续由 Codex/Claude 管理，不需要把 API key 发给微信或填入安装命令。
 
+### 用 AI agent 自然语言安装
+
+可以把这句话发给已经配置好的 Codex 或 Claude：
+
+> 请从 https://github.com/joeeeeey/wechat-agent 安装 WeChat Agent，读取仓库的 skills/wechat-agent/SKILL.md，先检查系统兼容性，再引导我配置助手名、工作目录和权限；暂不启用救援。扫码登录由程序自动检测，完成后告诉我如何在微信里查看和修改配置。
+
+**当前只支持 macOS。** Windows 可以让 agent 读取 skill，但尚不能运行本项目的 setup/watch；原生 Windows、WSL2 和 Linux 都没有支持的安装流程。自然语言安装不会自动消除平台限制，具体见[平台支持说明](docs/setup.md#platform-support)。
+
 ## 怎么用
 
 默认唤醒名是 `主咪` / `zhumi`。例如：
@@ -50,6 +58,8 @@ curl -fsSL https://raw.githubusercontent.com/joeeeeey/wechat-agent/main/scripts/
 本次实测的 File Helper 网页对合并转发显示“不支持”，无法从该占位消息取得聊天正文。可改用逐条转发、文本文件或截图。
 
 ## 在微信里查看和修改配置
+
+首次扫码连接后的欢迎消息会列出以下入口和修改示例；助手名称和唤醒词以你的配置为准：
 
 ```text
 /ai help

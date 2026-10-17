@@ -115,6 +115,7 @@ export async function setup(){
   // Also supports `npm run setup` from a source checkout.
   run('npm',['ci']);run(process.execPath,[path.join(repo,'node_modules/playwright/cli.js'),'install','chromium']);
   const launcher=writeLauncher();console.log('配置已保存：'+configPath+'\n以后使用：'+launcher+' start | status | stop | restart');
+  console.log('扫码连接后，在微信发送 /ai help 查看用法、/ai config 查看配置、/ai status 查看状态。\n例如：/ai config set 回复风格 详细；也可以用唤醒词让助手按自然语言修改偏好。检查和反馈间隔仅限本机配置后重启 watch。');
   if(c.execution.enabled&&await yes('现在打开 Playwright、扫码并开始接收任务？',true))run(process.execPath,[path.join(repo,'src/watch/cli.cjs'),'start','--hours',String(c.monitoring.hours)]);
  }finally{rl.close();input.destroy();output.end();}
 }

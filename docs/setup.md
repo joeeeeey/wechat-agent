@@ -1,5 +1,11 @@
 # Install and run
 
+## Platform support
+
+Guided installation and persistent watch currently support **macOS only**, including installation through an AI agent using the skill. Installing or reading `SKILL.md` on Windows does not install a compatible runtime.
+
+Native Windows, WSL2 and Linux are not supported setup targets yet. Both setup and watch explicitly check for macOS. The current implementation also relies on `/dev/tty`, POSIX process inspection and Unix-domain control sockets; optional rescue heartbeat installation uses macOS LaunchAgents. Windows support requires runtime and installer changes plus platform testing, not just PowerShell instructions. Do not bypass the guards or recommend WSL2 as an already supported workaround.
+
 ## Current macOS guided setup
 
 Use the one-command installer in [README](../README.md), or run `npm ci` and
@@ -8,6 +14,8 @@ Claude CLI, saves private watch configuration, optionally installs the skill and
 prepares rescue configuration, then opens a dedicated browser for a local scan.
 See [watch configuration](watch.md) for markers, file handling, permissions and
 `npm run watch -- start|status|stop|restart`.
+
+After login, the connected message introduces `/ai help`, `/ai config`, `/ai status`, and configuration examples such as `/ai config set 回复风格 详细`. Users can also ask the configured assistant alias to change preferences in natural language. Names, aliases and response preferences reload live; check/progress intervals remain local-only and require a deliberate watch restart. Finish collection before sending configuration commands, since all messages inside a batch are treated as materials.
 
 For existing installations, stop the old controller and close its dedicated
 browser before rerunning the bootstrap. It refuses to replace running code.
