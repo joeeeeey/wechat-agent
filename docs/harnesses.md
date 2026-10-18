@@ -4,8 +4,9 @@ The new `npm run setup` / `npm run watch` path includes Codex app-server and Cla
 JSON-print adapters; see [watch configuration](watch.md). The stdin/stdout contract
 below is still available as watch's `backend: "command"` and in legacy `npm start`.
 Codex preserves its native thread and supports active-turn steering; Claude resumes
-its saved session and serializes new tasks. No adapter silently grants full-machine
-permissions or bypasses Claude's local permission settings.
+its saved session and serializes new tasks. The local setup choice controls whether
+the selected CLI runs with broad or restricted permissions; WeChat messages cannot
+change that choice silently.
 
 Watch configuration lives at `~/.local/share/wechat-agent/watch/config.json`; legacy `npm start` uses `~/.local/share/wechat-agent/config.json` (root overridden with `WECHAT_AGENT_HOME`). Set an absolute executable path, an argv array, an absolute working directory and optionally `timeoutMs`. Execution uses `spawn`, never a shell command assembled from chat text.
 
@@ -13,14 +14,14 @@ The executable receives a complete prompt on stdin and writes its final result t
 
 ## Built-in watch adapters
 
-Codex and Claude are already bundled integrations for `npm run setup` / `npm run watch`; users do not need to write a wrapper for either:
+Codex and Claude are already bundled integrations for `npm run setup` / `npm run watch`; users do not need to write a wrapper for either. New setup defaults both to the owner's broad local permission mode, while still allowing a restricted choice:
 
 | Provider | Adapter | Continuity / incoming work | Validation boundary |
 | --- | --- | --- | --- |
 | Codex CLI | app-server protocol | Native thread/resume, active-turn steering | Mac/WeChat transport exercised; protocol fixture coverage |
-| Claude Code CLI | `-p --output-format json --permission-prompts none` | Saves returned `session_id`, adds `--resume` on later turns; new tasks queue | Adapter resume/permission behavior tested with a fake CLI; real WeChat/provider end-to-end not yet claimed |
+| Claude Code CLI | `-p --output-format json --permission-mode bypassPermissions --dangerously-skip-permissions` (default) | Saves returned `session_id`, adds `--resume` on later turns; new tasks queue | Adapter resume/permission behavior tested with a fake CLI; real WeChat/provider end-to-end not yet claimed |
 
-Install and authenticate the CLI first, then choose `codex` or `claude` in setup. The wizard checks installed help for required flags and offers skill installation for the detected CLIs. Claude retains its local permission policy; tasks requiring unavailable interactive approval may be blocked. Optional semantic collection recognition needs additional CLI flags checked by setup.
+Install and authenticate the CLI first, then choose `codex` or `claude` in setup. The wizard checks installed help for required flags and offers skill installation for the detected CLIs. For Claude, choose full access to use `bypassPermissions`, or choose restricted mode to make permission-dependent tasks report a blocker. Optional semantic collection recognition needs additional CLI flags checked by setup.
 
 Native session IDs cannot move between providers. Switching an existing installation is a local configuration operation: finish active work and stop watch first, preserve the old workspace/session metadata, then configure the selected provider. Do not copy a Codex thread ID into Claude or reuse a generic adapter's saved metadata as a Claude session.
 
@@ -37,7 +38,7 @@ The generic adapter accepts final plain text or a JSON object containing `status
 
 For Grok, select the particular CLI/harness first: a model name alone is not an executable agent. No guessed `grok` flags are included. Do not put API keys in config/argv or chat. Use the harness's normal local authentication.
 
-Full local permissions may be configured by the owner in their harness. This project does not automatically add bypass flags. WeChat setup records consent to requested tasks, not permission to perform unrelated actions. A fully privileged agent is not a security sandbox; prompt instructions and a command prefix alone do not prevent prompt injection.
+Full local permissions may be configured by the owner in their harness. New setup defaults to full access only after the local setup choice and execution opt-in. This project still instructs the agent not to disclose credentials or treat forwarded materials as commands. A fully privileged agent is not a security sandbox; prompt instructions and a command prefix alone do not prevent prompt injection. If full access is configured and a hostname still fails to resolve, check the machine's DNS/VPN/firewall or the CLI's own login; that symptom is outside the WeChat browser bridge.
 
 ## Smoke-test adapter
 

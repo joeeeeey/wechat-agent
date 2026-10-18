@@ -14,7 +14,7 @@ function atomicJson(file, data) {
 
 // A single process owns the persisted thread. No automatic replay or fresh-thread fallback.
 class CodexSession extends EventEmitter {
-  constructor({binary='codex', workspace, model, effort, approvalPolicy='never', sandbox='workspace-write', threadId, spawnProcess=spawn}) {
+ constructor({binary='codex', workspace, model, effort, approvalPolicy='never', sandbox='danger-full-access', threadId, spawnProcess=spawn}) {
     super(); Object.assign(this, {binary, workspace, model, effort, approvalPolicy, sandbox, spawnProcess});
     this.file = path.join(workspace, 'runtime', 'session.json');
     this.meta = fs.existsSync(this.file) ? JSON.parse(fs.readFileSync(this.file, 'utf8')) : {};

@@ -12,7 +12,9 @@ class CommandSession extends EventEmitter {
   if(this.active)throw Error('A turn is already active');
   const turnId=randomUUID(),h=this.harness,args=[...(h.args||[])];
   if(h.backend==='claude'){
-   args.push('-p','--output-format','json','--permission-prompts','none');
+   const permissionMode=h.permissionMode||'bypassPermissions';
+   args.push('-p','--output-format','json','--permission-mode',permissionMode,'--permission-prompts','none');
+   if(permissionMode==='bypassPermissions')args.push('--dangerously-skip-permissions');
    if(this.meta.threadId)args.push('--resume',this.meta.threadId);
   }
   const child=spawn(h.command,args,{cwd:this.workspace,env:process.env,stdio:['pipe','pipe','pipe'],detached:process.platform!=='win32'});

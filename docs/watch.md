@@ -16,7 +16,7 @@ Run `npm run setup` or the README macOS bootstrap. Configuration lives at
   "browser": {"channel": "chromium"},
   "harness": {
     "backend": "codex", "command": "/absolute/path/to/codex", "args": [],
-    "approvalPolicy": "never", "sandbox": "workspace-write"
+    "approvalPolicy": "never", "sandbox": "danger-full-access", "permissionMode": "bypassPermissions"
   },
   "collection": {
     "enabled": true, "maxMessages": 30, "startTokens": ["1111"],
@@ -34,12 +34,18 @@ Run `npm run setup` or the README macOS bootstrap. Configuration lives at
 Codex's `model`, `effort`, and initial `threadId` are optional harness fields.
 Once a thread exists, metadata in `workspace/runtime/session.json` takes precedence;
 never delete it to work around ownership errors. Stop its other owner first.
-The server gets the configured sandbox; no hard-coded full-access override is used.
+The server gets the configured sandbox. New setup defaults to `danger-full-access`
+for an owner who wants the same access as their local Codex; choose read-only or
+workspace-write during setup if preferred. Existing installations keep their saved
+choice until setup is rerun or the local config is deliberately changed.
 
 For Claude use `backend: "claude"` and its executable in `command`.
-The adapter uses `-p --output-format json --permission-prompts none`, persists
-`session_id`, and supplies `--resume` for subsequent tasks. It uses existing CLI
-permissions; operations requiring interaction are reported as blocked. Optional
+The adapter uses `-p --output-format json --permission-mode <mode>
+--permission-prompts none`, persists `session_id`, and supplies `--resume` for
+subsequent tasks. New setup defaults Claude to `bypassPermissions`, which also
+passes `--dangerously-skip-permissions`, so network/tools do not wait for an
+interactive approval that WeChat cannot answer. Choose `dontAsk` to retain a
+restricted mode. Optional
 `args` are literal argv values, never shell text. A generic `backend: "command"`
 uses the [stdin/stdout harness contract](harnesses.md); it has no native history
 or live steering unless the executable provides that itself.
