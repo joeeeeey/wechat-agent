@@ -13,7 +13,9 @@ function defaults(){return {
  monitoring:{hours:24,pollSeconds:20,progressSeconds:45},
  loginReminders:{enabled:true,estimatedHours:24,beforeMinutes:[60,30,10]},
  browser:{channel:'chromium'},
- harness:{backend:'codex',command:'codex',args:[],approvalPolicy:'never',sandbox:'workspace-write'},
+ // The owner explicitly grants the local CLI the same broad access they gave it
+ // interactively. The setup wizard still presents this choice before enabling work.
+ harness:{backend:'codex',command:'codex',args:[],approvalPolicy:'never',sandbox:'danger-full-access',permissionMode:'bypassPermissions'},
  collection:{enabled:true,maxMessages:30,startTokens:['1111'],allowInstructionAfterStartToken:true,endMarkers:['1111','mmmm'],allowAssistantPrefixOnEnd:false,semantic:{enabled:false,timeoutMs:25000,minimumConfidence:0.9,maxInputChars:1600}},
  attachments:{enabled:true,maxBytes:25*1024*1024},
  execution:{enabled:false},rescue:{enabled:false}
@@ -25,6 +27,7 @@ function validate(c){
  if(typeof c.harness.command!=='string'||!c.harness.command)throw new Error('Configure a local harness command');
  if(c.harness.args&&!Array.isArray(c.harness.args))throw new Error('harness.args must be an argv array');
  if(c.harness.backend==='codex'&&!['read-only','workspace-write','danger-full-access'].includes(c.harness.sandbox||'workspace-write'))throw new Error('Invalid Codex sandbox');
+ if(c.harness.backend==='claude'&&c.harness.permissionMode!==undefined&&!['acceptEdits','auto','bypassPermissions','dontAsk','manual','plan'].includes(c.harness.permissionMode))throw new Error('Invalid Claude permission mode');
  for(const text of [c.assistant?.displayName,c.device?.id,c.device?.displayName,...c.assistant?.aliases||[]])if(typeof text!=='string'||!text.trim()||text.length>100||/[\r\n\x00]/.test(text))throw new Error('Invalid identity/alias');
  if(!c.assistant?.aliases?.length)throw new Error('At least one assistant alias is required');
  if(c.response&&(!labelValue(c.response.language)||!['简短','详细'].includes(c.response.style)))throw new Error('Invalid response preferences');

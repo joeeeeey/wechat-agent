@@ -61,7 +61,7 @@ export async function setup(){
   const command=executable(backend);
   const flags=help(command,backend==='codex'?['exec','--help']:['--help']);
   if(backend==='codex'&&!flags.includes('--output-schema'))throw Error('Upgrade Codex CLI: --output-schema support is required');
-  if(backend==='claude'&&!['--output-format','--resume','--permission-prompts'].every(f=>flags.includes(f)))throw Error('Upgrade Claude CLI: JSON output, resume and permission-prompts support required');
+  if(backend==='claude'&&!['--output-format','--resume','--permission-prompts','--permission-mode','--dangerously-skip-permissions'].every(f=>flags.includes(f)))throw Error('Upgrade Claude CLI: JSON output, resume and full-permission mode support required');
   c.harness={...c.harness,backend,command,args:backend===c.harness.backend?c.harness.args||[]:[]};
   c.assistant.displayName=await ask('助手名称',c.assistant.displayName);
   const aliases=(await ask('唤醒别名（逗号分隔，名称会自动保留）',c.assistant.aliases.join(','))).split(/[,，]/).map(s=>s.trim()).filter(Boolean);
@@ -76,11 +76,16 @@ export async function setup(){
    c.collection.semantic={...c.collection.semantic,backend,command,args:[]};
   }
   if(backend==='codex'){
-   const permission=await ask('Codex 权限：1=只读，2=工作区写入，3=全机权限（仅在明确需要时）','2');
+   const permission=await ask('Codex 权限：1=只读，2=工作区写入，3=全机权限（默认）','3');
    const sandbox={'1':'read-only','2':'workspace-write','3':'danger-full-access'}[permission];if(!sandbox)throw Error('Invalid permission choice');
    c.harness.sandbox=sandbox;c.harness.approvalPolicy='never';
    console.log('非交互执行不会停下来审批；权限不足时会回报阻碍。');
-  }else console.log('Claude 沿用本机权限配置；需要交互批准的操作会失败并回报。安装器不会添加权限绕过参数。');
+  }else{
+   const permission=await ask('Claude 权限：1=沿用本机限制，2=全权限（与本机 Codex 全机模式一致）','2');
+   c.harness.permissionMode={'1':'dontAsk','2':'bypassPermissions'}[permission];
+   if(!c.harness.permissionMode)throw Error('Invalid permission choice');
+   console.log(c.harness.permissionMode==='bypassPermissions'?'Claude 将以全权限模式运行，不等待交互批准。':'Claude 将沿用本机权限；需要批准的操作会回报阻碍。');
+  }
   c.execution.enabled=await yes('允许通过此微信入口执行你明确请求的任务？',false);
   validate(c);fs.mkdirSync(c.workspace,{recursive:true,mode:0o700});atomic(configPath,c);
   for(const name of installed)if(await yes(`安装 wechat-agent skill 到 ${name}？`,name===backend))installSkill(name);

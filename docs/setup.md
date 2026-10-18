@@ -19,6 +19,8 @@ See [watch configuration](watch.md) for markers, file handling, permissions and
 
 After login, the connected message introduces `/ai help`, `/ai config`, `/ai status`, and configuration examples such as `/ai config set 回复风格 详细`. Users can also ask the configured assistant alias to change preferences in natural language. Names, aliases and response preferences reload live; check/progress intervals remain local-only and require a deliberate watch restart. Finish collection before sending configuration commands, since all messages inside a batch are treated as materials.
 
+New setup defaults to broad local agent permissions: Codex uses `danger-full-access`; Claude uses `bypassPermissions` plus its non-interactive skip-permissions flag. You can choose a restricted mode during setup. If a task still reports DNS or connection failure in broad mode, verify the host independently (for example, resolve `api.notion.com` and run a credential-free `curl -I https://api.notion.com`) before changing the WeChat bridge; that indicates the machine's DNS/VPN/firewall or CLI login rather than the browser transport.
+
 For existing installations, stop the old controller and close its dedicated
 browser before rerunning the bootstrap. It refuses to replace running code.
 Back up private state locally, never in Git. Legacy `npm start` state is not

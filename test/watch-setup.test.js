@@ -23,7 +23,7 @@ test('connected collection examples work with renamed aliases and custom marker 
  }
 });
 test('guided configuration requires opt-in and validates executable settings',()=>{
- const c=defaults();assert.equal(c.execution.enabled,false);assert.equal(c.rescue.enabled,false);assert.equal(c.harness.sandbox,'workspace-write');assert.equal(validate(c),c);
+ const c=defaults();assert.equal(c.execution.enabled,false);assert.equal(c.rescue.enabled,false);assert.equal(c.harness.sandbox,'danger-full-access');assert.equal(c.harness.permissionMode,'bypassPermissions');assert.equal(validate(c),c);
  assert.throws(()=>validate({...c,workspace:'relative'}),/absolute/);
  assert.throws(()=>validate({...c,monitoring:{...c.monitoring,pollSeconds:0}}),/interval/);
  assert.throws(()=>validate({...c,collection:{...c.collection,semantic:{enabled:true}}}),/classifier/);
