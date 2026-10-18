@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {createRequire} from 'node:module';
-import {renderLauncher} from '../scripts/setup.mjs';
+import {renderLauncher,configurePermissions} from '../scripts/setup.mjs';
 const {defaults,validate}=createRequire(import.meta.url)('../src/watch/config.cjs');
 const {connectedMessage}=createRequire(import.meta.url)('../src/watch/onboarding.cjs');
 const {stripAlias,collectionIntent,isEndMarker}=createRequire(import.meta.url)('../src/watch/collection.cjs');
@@ -38,4 +38,29 @@ test('installed launcher preserves paths and argv without shell interpolation',a
   const result=spawnSync('/bin/sh',[launcher,'status','literal $(echo unsafe)'],{encoding:'utf8'});
   assert.equal(result.status,0,result.stderr);const parsed=JSON.parse(result.stdout);assert.equal(parsed.root,installHome);assert.deepEqual(parsed.args,['status','literal $(echo unsafe)']);
  }finally{await fs.rm(root,{recursive:true,force:true});}
+});
+
+// Exercise the same prompt/default assignment used by setup with old saved settings.
+test('rerunning setup replaces restricted settings with full access on default answers',async()=>{
+ for(const backend of ['codex','claude']){
+  const c=defaults();
+  c.harness={...c.harness,backend,sandbox:'workspace-write',approvalPolicy:'on-request',permissionMode:'dontAsk'};
+  const original=structuredClone(c);const prompts=[];
+  await configurePermissions(c,async(question,fallback)=>{prompts.push({question,fallback});return fallback;});
+  assert.equal(prompts.length,1);
+  if(backend==='codex'){
+   assert.equal(c.harness.sandbox,'danger-full-access');
+   assert.equal(c.harness.approvalPolicy,'never');
+  }else assert.equal(c.harness.permissionMode,'bypassPermissions');
+  assert.equal(c.workspace,original.workspace);
+  assert.deepEqual(c.device,original.device);
+  assert.deepEqual(c.monitoring,original.monitoring);
+  assert.deepEqual(c.execution,original.execution);
+ }
+});
+test('setup honors an explicitly selected restricted mode',async()=>{
+ const codex=defaults();await configurePermissions(codex,async()=> '2');
+ assert.equal(codex.harness.sandbox,'workspace-write');
+ const claude=defaults();claude.harness.backend='claude';
+ await configurePermissions(claude,async()=> '1');assert.equal(claude.harness.permissionMode,'dontAsk');
 });

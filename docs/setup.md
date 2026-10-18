@@ -74,3 +74,9 @@ The skill is at `skills/wechat-agent/SKILL.md`. Register that directory with you
 ## Validation
 
 `npm test` covers onboarding, shell-safe harness execution, limits/failures and browser DOM fixtures. It does not log into real WeChat or invoke paid providers. Complete a separate live smoke test before relying on remote execution.
+
+## Re-run setup with full permissions
+
+Use the latest installed setup from the local terminal/agent. After pending work finishes, stop watch and run the installed launcher with `setup` (or `npm run setup` from its checkout). Accept the default permission choice: **Codex 3** (`danger-full-access`, `approvalPolicy: never`) or **Claude 2** (`bypassPermissions` with `--dangerously-skip-permissions`). Setup replaces an old saved restricted mode; it does not use that old mode as the prompt default. Keep the existing identity and workspace answers, enable execution, then start watch. A compatible running WeChat browser is reused; do not request `--browser` or delete native session metadata for a permission change.
+
+Running setup from an old installed release still runs old code: update the installation first. The bootstrap upgrade requires the old controller/browser to be stopped, so plan a new scan if using that upgrade route. A running restricted AI turn cannot promote its own sandbox via `/ai config`; the locally restarted executor receives the new policy on native session resume. Full access removes the added agent sandbox/approval restriction, not OS privacy controls, service authorization or actual network failures.
