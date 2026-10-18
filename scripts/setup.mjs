@@ -42,6 +42,21 @@ function writeLauncher(){
  const launcher=renderLauncher();
  const file=path.join(bin,'wechat-agent');fs.writeFileSync(file,launcher,{mode:0o700});fs.chmodSync(file,0o700);return file;
 }
+export async function configurePermissions(c,ask){
+ const backend=c.harness.backend;
+ if(backend==='codex'){
+  const permission=await ask('Codex 权限：1=只读，2=工作区写入，3=全机权限（默认）','3');
+  const sandbox={'1':'read-only','2':'workspace-write','3':'danger-full-access'}[permission];if(!sandbox)throw Error('Invalid permission choice');
+  c.harness.sandbox=sandbox;c.harness.approvalPolicy='never';
+  console.log('非交互执行不会停下来审批；权限不足时会回报阻碍。');
+ }else{
+  const permission=await ask('Claude 权限：1=沿用本机限制，2=全权限（与本机 Codex 全机模式一致）','2');
+  c.harness.permissionMode={'1':'dontAsk','2':'bypassPermissions'}[permission];
+  if(!c.harness.permissionMode)throw Error('Invalid permission choice');
+  console.log(c.harness.permissionMode==='bypassPermissions'?'Claude 将以全权限模式运行，不等待交互批准。':'Claude 将沿用本机权限；需要批准的操作会回报阻碍。');
+ }
+ return c;
+}
 export async function setup(){
  if(process.platform!=='darwin')throw Error('Guided setup currently supports macOS only');
  if(Number(process.versions.node.split('.')[0])<22)throw Error('Node 22+ required; use the README bootstrap command');
@@ -75,17 +90,7 @@ export async function setup(){
    if(backend==='claude'&&!['--json-schema','--tools','--strict-mcp-config','--no-session-persistence'].every(f=>flags.includes(f)))throw Error('Upgrade Claude CLI for semantic classification');
    c.collection.semantic={...c.collection.semantic,backend,command,args:[]};
   }
-  if(backend==='codex'){
-   const permission=await ask('Codex 权限：1=只读，2=工作区写入，3=全机权限（默认）','3');
-   const sandbox={'1':'read-only','2':'workspace-write','3':'danger-full-access'}[permission];if(!sandbox)throw Error('Invalid permission choice');
-   c.harness.sandbox=sandbox;c.harness.approvalPolicy='never';
-   console.log('非交互执行不会停下来审批；权限不足时会回报阻碍。');
-  }else{
-   const permission=await ask('Claude 权限：1=沿用本机限制，2=全权限（与本机 Codex 全机模式一致）','2');
-   c.harness.permissionMode={'1':'dontAsk','2':'bypassPermissions'}[permission];
-   if(!c.harness.permissionMode)throw Error('Invalid permission choice');
-   console.log(c.harness.permissionMode==='bypassPermissions'?'Claude 将以全权限模式运行，不等待交互批准。':'Claude 将沿用本机权限；需要批准的操作会回报阻碍。');
-  }
+  await configurePermissions(c,ask);
   c.execution.enabled=await yes('允许通过此微信入口执行你明确请求的任务？',false);
   validate(c);fs.mkdirSync(c.workspace,{recursive:true,mode:0o700});atomic(configPath,c);
   for(const name of installed)if(await yes(`安装 wechat-agent skill 到 ${name}？`,name===backend))installSkill(name);

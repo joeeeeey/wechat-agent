@@ -18,14 +18,18 @@ function serverMock(calls){return ()=>{
   queueMicrotask(()=>child.stdout.write(JSON.stringify({id:r.id,result})+'\n'));
  }});return child;
 };}
-test('Codex resumes native identity and forwards configured permissions without granting full access',async()=>{
+test('Codex resumes native identity with configured full access',async()=>{
  const workspace=await fs.mkdtemp(path.join(os.tmpdir(),'wechat-native-test-'));const calls=[];
  try{
-  const a=new CodexSession({workspace,spawnProcess:serverMock(calls)});await a.connect();
- assert.equal(calls.find(c=>c.method==='thread/start').params.sandbox,'danger-full-access');
-  const b=new CodexSession({workspace,spawnProcess:serverMock(calls)});await b.connect();
+  const a=new CodexSession({workspace,sandbox:'workspace-write',approvalPolicy:'on-request',spawnProcess:serverMock(calls)});await a.connect();
+  assert.equal(calls.find(c=>c.method==='thread/start').params.sandbox,'workspace-write');
+  a.close();
+  const b=new CodexSession({workspace,sandbox:'danger-full-access',approvalPolicy:'never',spawnProcess:serverMock(calls)});await b.connect();
+  assert.equal(calls.find(c=>c.method==='thread/resume').params.sandbox,'danger-full-access');
+  assert.equal(calls.find(c=>c.method==='thread/resume').params.approvalPolicy,'never');
   assert.equal(calls.find(c=>c.method==='thread/resume').params.threadId,'persistent-fixture');
   const turn=await b.start('fixture',{});
+  assert.equal(calls.find(c=>c.method==='turn/start').params.approvalPolicy,'never');
   assert.equal((await b.steer('follow-up','message-1')).accepted,true);
   b.handle({method:'item/completed',params:{threadId:'persistent-fixture',turnId:turn.turnId,item:{type:'agentMessage',phase:'final_answer',text:JSON.stringify({status:'succeeded',response:'done'})}}});
   b.handle({method:'turn/completed',params:{threadId:'persistent-fixture',turn:{id:turn.turnId,status:'completed'}}});
@@ -38,7 +42,9 @@ test('Claude adapter resumes saved session and queues rather than claiming steer
   const file=path.join(workspace,'fake-cli');
   await fs.writeFile(file,'#!/usr/bin/env node\nlet s="";process.stdin.on("data",c=>s+=c);process.stdin.on("end",()=>{require("fs").writeFileSync("args.json",JSON.stringify(process.argv.slice(2)));console.log(JSON.stringify({session_id:"claude-fixture",result:JSON.stringify({status:"succeeded",response:"ok"})}));});\n',{mode:0o700});
   const harness={backend:'claude',command:file,args:[],permissionMode:'bypassPermissions'};
-  const a=new CommandSession({workspace,harness});await (await a.start('hello')).done;
+  const a=new CommandSession({workspace,harness:{...harness,permissionMode:'dontAsk'}});await (await a.start('hello')).done;
+  const initialArgs=JSON.parse(await fs.readFile(path.join(workspace,'args.json'),'utf8'));
+  assert.ok(initialArgs.includes('dontAsk'));assert.ok(!initialArgs.includes('--dangerously-skip-permissions'));
   const b=new CommandSession({workspace,harness});await (await b.start('again')).done;
   const args=JSON.parse(await fs.readFile(path.join(workspace,'args.json'),'utf8'));
   assert.ok(args.includes('--resume'));assert.ok(args.includes('claude-fixture'));
