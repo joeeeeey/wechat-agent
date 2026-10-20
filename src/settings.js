@@ -12,7 +12,7 @@ const fields={
 };
 function label(value){return typeof value==='string'&&value.trim().length>0&&value.length<=60&&!/[\r\n\[\]\x00-\x1f]/.test(value)&&!value.startsWith('/');}
 export function initializeSettings(saved={},legacy={},computer={name:os.hostname(),system:os.type()}){
- return {version:1,deviceId:saved.deviceId||randomUUID(),name:legacy.name||'主咪',deviceName:`${computer.name} · ${computer.system}`.slice(0,60),language:'中文',timezone:Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC',style:'简短',monitoringHours:24,requireTarget:false,...saved};
+ return {version:1,deviceId:saved.deviceId||randomUUID(),name:legacy.name||'小助手',deviceName:`${computer.name} · ${computer.system}`.slice(0,60),language:'中文',timezone:Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC',style:'简短',monitoringHours:24,requireTarget:false,...saved};
 }
 export function effectiveSettings(saved,env=process.env){
  const result={...saved},locked=[];

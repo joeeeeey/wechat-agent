@@ -134,7 +134,7 @@ exports.start=async function(page,{preservePage=false}={}) {
         request.materialIds=[];
         const modeConfig=collectionConfig();
         if(!collectionIntent(body,modeConfig)&&isEndMarker(body,modeConfig.endMarkers||DEFAULT_MARKERS,modeConfig)){
-          await notify('现在没有正在收集的聊天批次。发“主咪收集”后再转发材料，最后发结束符即可。');continue;
+          await notify('现在没有正在收集的聊天批次。发“小助手收集”后再转发材料，最后发结束符即可。');continue;
         }
         let intent=collectionIntent(body,modeConfig)?{intent:'start_collection',source:'pattern'}:{intent:'normal_task',source:'pattern_miss'};
         if(intent.intent!=='start_collection'&&modeConfig.enabled!==false&&modeConfig.semantic?.enabled&&collectionCandidate(body)){
@@ -146,7 +146,7 @@ exports.start=async function(page,{preservePage=false}={}) {
         if(intent.intent==='uncertain'){
           request.status='waiting_intent_confirmation';state.requests.push(request);save();
           const technical=['timeout','classifier_failure','invalid_result','input_limit'].includes(intent.source);
-          await notify(technical?'这句像是在准备发一批材料，但收集识别服务暂时未返回有效结果。要开始收集请发“主咪收集”或“主咪1111”；本次还没有开始执行。':'这句可能是在准备发一批材料。要开始收集请发“主咪收集”或“主咪1111”；如果要现在处理，请说明要处理的材料和任务。');continue;
+          await notify(technical?'这句像是在准备发一批材料，但收集识别服务暂时未返回有效结果。要开始收集请发“小助手收集”或“小助手1111”；本次还没有开始执行。':'这句可能是在准备发一批材料。要开始收集请发“小助手收集”或“小助手1111”；如果要现在处理，请说明要处理的材料和任务。');continue;
         }
         if(intent.intent==='start_collection'){
           const endMarkers=collectionConfig().endMarkers||DEFAULT_MARKERS;

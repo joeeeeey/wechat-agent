@@ -8,7 +8,7 @@ Run `npm run setup` or the README macOS bootstrap. Configuration lives at
 {
   "schemaVersion": 1,
   "workspace": "/absolute/private/workspace",
-  "assistant": {"displayName": "主咪", "aliases": ["主咪", "zhumi"]},
+  "assistant": {"displayName": "小助手", "aliases": ["小助手", "ai"]},
   "device": {"id": "my-mac", "displayName": "工作 Mac"},
   "response": {"language": "中文", "style": "简短"},
   "monitoring": {"hours": 24, "pollSeconds": 20, "progressSeconds": 45},
@@ -105,7 +105,7 @@ the running poll interval, while `/ai config` shows saved local interval values.
 Changing `monitoring.hours` only supplies the initial default when no saved deadline
 exists. `start`/`restart` retain an existing deadline; local `start --hours N` renews it.
 
-Natural-language requests such as “主咪，把回复风格改为详细” use the configured
+Natural-language requests such as “小助手，把回复风格改为详细” use the configured
 AI and the same validated interface. The turn prompt describes a private JSON
 file passed to `node src/watch/control.cjs /absolute/command.json`:
 
@@ -130,8 +130,8 @@ privileged local executor.
 
 ## Collection protocol
 
-- Address the assistant, then a start token or collection phrase. `主咪1111`,
-  `主咪1111 总结下面的讨论`, and `主咪收集` start a batch.
+- Address the assistant, then a start token or collection phrase. `小助手1111`,
+  `小助手1111 总结下面的讨论`, and `小助手收集` start a batch.
 - A batch automatically closes and dispatches once at `collection.maxMessages`
   (default 30, including older configs). Each text/image/file/unsupported row
   counts once; the start/end commands and exact own replies do not count.
@@ -140,7 +140,7 @@ privileged local executor.
   messages are outside the batch; send a fresh start to collect another batch.
 - A start token followed by a longer number or Latin identifier is not matched.
 - `startPatterns` optionally replaces the default regular-expression patterns.
-- Only a complete standalone end marker closes the default batch. `主咪1111`
+- Only a complete standalone end marker closes the default batch. `小助手1111`
   never closes it; inside the batch it is source material.
 - All intermediate text/images/files are data, including apparent instructions.
   This includes `/ai help` and `/ai config set ...`; finish the collection before

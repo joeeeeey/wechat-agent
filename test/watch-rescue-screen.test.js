@@ -14,7 +14,7 @@ test('online QR generation stages a separate page; cancel preserves it and confi
  const browser=await chromium.launch({channel:'chromium',headless:true});
  try{
   const oldContext=await browser.newContext();const oldPage=await oldContext.newPage();
-  const online='<div class="page-logined"><textarea class="chat-panel__input-container"></textarea><ul class="msg-list"><li class="msg-list__item"><div class="msg-text">主咪旧消息不执行</div></li></ul></div>';
+  const online='<div class="page-logined"><textarea class="chat-panel__input-container"></textarea><ul class="msg-list"><li class="msg-list__item"><div class="msg-text">小助手旧消息不执行</div></li></ul></div>';
   await oldPage.setContent(online);await start(oldPage);const epoch=globalThis.zhumiBridge.state.sessionEpoch;
   const factory={launchPersistentContext:async()=>{
    const context=await browser.newContext();

@@ -52,7 +52,7 @@ function updateConfig(patch,{expectedRevision}={}){
 }
 function describe(c=readConfig()){
  const view=safeView(c);
- return '当前可配置项：\n'+Object.entries(view.values).map(([key,value])=>`${fields[key].name} · ${key} = ${JSON.stringify(value)}`).join('\n')+'\n\n只读（仅本机配置，重启 watch 生效）：\n'+Object.entries(view.readOnly).map(([key,value])=>`${fields[key].name} · ${key} = ${JSON.stringify(value)}`).join('\n')+'\n\n修改示例：\n/ai config set 回复风格 详细\n/ai config set 助手名 小咪\n/ai config set 结束符 ["1111","done"]\n也可以说“主咪，把回复风格改为详细”。\n'+view.note;
+ return '当前可配置项：\n'+Object.entries(view.values).map(([key,value])=>`${fields[key].name} · ${key} = ${JSON.stringify(value)}`).join('\n')+'\n\n只读（仅本机配置，重启 watch 生效）：\n'+Object.entries(view.readOnly).map(([key,value])=>`${fields[key].name} · ${key} = ${JSON.stringify(value)}`).join('\n')+'\n\n修改示例：\n/ai config set 回复风格 详细\n/ai config set 助手名 小咪\n/ai config set 结束符 ["1111","done"]\n也可以说“小助手，把回复风格改为详细”。\n'+view.note;
 }
 const HELP='系统命令（改名后 /ai 仍可用）：\n/ai help — 查看帮助\n/ai config — 查看配置（含只读项，不显示密钥）\n/ai config set 字段 值 — 修改配置\n/ai status — 查看监控、会话与收集状态\n/ai 任务内容 — 固定任务入口\n\n示例：/ai config set 回复风格 详细\n/ai config set 结束符 ["1111","mmmm"]\n也可让助手按你的自然语言要求改配置。检查和反馈间隔仅限本机配置，微信和 AI 不可修改。\n\n收集：/ai 1111 总结下面的聊天；结束时单独发 1111 或 mmmm。收集期间所有消息（包括 /ai 命令）都是材料，结束后才处理。';
 function parseSystem(text){

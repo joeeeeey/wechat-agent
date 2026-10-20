@@ -30,7 +30,7 @@ function collectionIntent(body,config={}){
   || /^(?:我(?:要|会|准备)?发(?:给)?你)[\s\S]{0,30}(?:一堆|一批|一些|很多|多条)[\s\S]{0,20}(?:聊天|消息|记录|材料)/.test(s)
   || /^(?:请|帮我|麻烦你)?[，,\s]*(?:收集|接收)[\s\S]{0,30}(?:下面|接下来)[\s\S]{0,30}(?:聊天|消息|记录|材料)/.test(s);
 }
-function stripAlias(text,aliases=['主咪','zhumi'],markers=DEFAULT_MARKERS){
+function stripAlias(text,aliases=['小助手','ai'],markers=DEFAULT_MARKERS){
  const s=text.trimStart();
  for(const alias of [...aliases].sort((a,b)=>b.length-a.length)){
   if(s.slice(0,alias.length).toLowerCase()!==alias.toLowerCase())continue;
@@ -43,7 +43,7 @@ function stripAlias(text,aliases=['主咪','zhumi'],markers=DEFAULT_MARKERS){
 function isEndMarker(text,markers=DEFAULT_MARKERS,config={}){
  if(markers.includes(text.trim()))return true;
  if(config.allowAssistantPrefixOnEnd!==true)return false;
- const body=stripAlias(text,config.aliases||['主咪','zhumi'],markers);
+ const body=stripAlias(text,config.aliases||['小助手','ai'],markers);
  return body!==null&&markers.includes(body);
 }
 module.exports={collectionIntent,collectionCandidate,isEndMarker,stripAlias,startToken,DEFAULT_MARKERS,DEFAULT_MAX_MESSAGES};

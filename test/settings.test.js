@@ -3,17 +3,17 @@ import assert from 'node:assert/strict';
 import {initializeSettings,effectiveSettings,matchMessage,configure,intro} from '../src/settings.js';
 const fresh=()=>initializeSettings({}, {},{name:'test-machine',system:'TestOS'});
 test('defaults and restart preserve name and device identity',()=>{
- const s=fresh();assert.equal(s.name,'主咪');assert.equal(s.deviceName,'test-machine · TestOS');
+ const s=fresh();assert.equal(s.name,'小助手');assert.equal(s.deviceName,'test-machine · TestOS');
  s.name='小咪';assert.deepEqual(initializeSettings(JSON.parse(JSON.stringify(s))),s);
  assert.equal(initializeSettings({}, {name:'原名'}).name,'原名');
 });
 test('fixed entry survives renames; names only match at beginning and outgoing never matches',()=>{
  const s=fresh(),m=text=>matchMessage({text},s);
- assert.equal(m('/ai test'),'test');assert.equal(m('主咪，test'),'test');
- assert.equal(m('我说主咪，test'),null);assert.equal(m('[AI] /ai test'),null);
+ assert.equal(m('/ai test'),'test');assert.equal(m('小助手，test'),'test');
+ assert.equal(m('我说小助手，test'),null);assert.equal(m('[AI] /ai test'),null);
  assert.equal(matchMessage({text:'/ai test',direction:'outgoing'},s),null);
  configure('把你改名叫小咪',s,{stage:'ready'},{});
- assert.equal(m('/ai test'),'test');assert.equal(m('主咪，test'),null);assert.equal(m('小咪，test'),'test');
+ assert.equal(m('/ai test'),'test');assert.equal(m('小助手，test'),null);assert.equal(m('小咪，test'),'test');
 });
 test('strict multi-device targeting admits exactly one device and rejects malformed targets',()=>{
  const a=fresh(),b=fresh();a.requireTarget=b.requireTarget=true;
@@ -39,14 +39,14 @@ test('default setup never grants execution implicitly, cancellation preserves pe
 test('env wins and locked edits report failure without changing stored value',()=>{
  const s=fresh(),env={WECHAT_AGENT_NAME:'锁定名'};
  assert.equal(effectiveSettings(s,env).values.name,'锁定名');
- assert.match(configure('把你改名叫小咪',s,{stage:'ready'},env),/未保存/);assert.equal(s.name,'主咪');
+ assert.match(configure('把你改名叫小咪',s,{stage:'ready'},env),/未保存/);assert.equal(s.name,'小助手');
  assert.throws(()=>effectiveSettings(s,{WECHAT_AGENT_MONITORING_HOURS:'999'}),/Invalid/);
 });
 test('invalid fields and task text cannot silently change configuration',()=>{
  const s=fresh(),state={stage:'ready'};
  assert.match(configure('设置 时区 garbage',s,state,{}),/无效/);
  assert.match(configure('设置 接收时长 0',s,state,{}),/无效/);
- assert.equal(configure('研究如何改名叫小咪',s,state,{}),null);assert.equal(s.name,'主咪');
+ assert.equal(configure('研究如何改名叫小咪',s,state,{}),null);assert.equal(s.name,'小助手');
  assert.match(configure('设置 接收时长 2',s,state,{}),/下次启动生效/);assert.equal(s.monitoringHours,2);
  assert.match(intro(s,state),new RegExp(s.deviceId));
 });

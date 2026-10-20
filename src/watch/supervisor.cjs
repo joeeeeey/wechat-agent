@@ -193,7 +193,7 @@ async function tick(){
       if(Date.parse(request.receivedAt)>Date.parse(state.stopAt))continue;
       if(/^停止监控[。！!\s]*$|^stop\s+monitoring[.!\s]*$/i.test(request.body)){await reply(request.id,'completed','好呀，这就停止本轮监控。');await stop('user');break;}
       const job=state.jobs[request.id]={id:request.id,body:request.body,forwardedTexts:request.forwardedTexts||[],materialIds:request.materialIds||[],collectionClosedAt:request.collectionClosedAt,receivedAt:request.receivedAt,phase:'ack_pending',directory:path.join(CWD,'runtime/jobs',request.id+'-'+Date.now())};save();
-      if(!request.body){await reply(request.id,'blocked','我在呢 🐱 想让我帮你做什么？把具体任务发给主咪就好。');job.phase='blocked';save();continue;}
+      if(!request.body){await reply(request.id,'blocked','我在呢 🐾 想让我帮你做什么？把具体任务发给小助手就好。');job.phase='blocked';save();continue;}
       if(request.materialSelectionError){await reply(request.id,'blocked',request.materialSelectionError);job.phase='blocked';save();continue;}
       fs.mkdirSync(job.directory,{recursive:true,mode:0o700});
       const queued=!!active||Object.values(state.jobs).some(j=>j.id!==job.id&&j.phase==='queued');
