@@ -7,7 +7,7 @@ const root=path.join(home,'watch');
 const configPath=path.join(root,'config.json');
 function defaults(){return {
  schemaVersion:1,workspace:path.join(root,'workspace'),
- assistant:{displayName:'主咪',aliases:['主咪','zhumi']},
+ assistant:{displayName:'小助手',aliases:['小助手','ai']},
  device:{id:randomUUID(),displayName:os.hostname()},
  response:{language:'中文',style:'简短'},
  monitoring:{hours:24,pollSeconds:20,progressSeconds:45},

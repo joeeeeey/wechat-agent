@@ -1,6 +1,6 @@
 # Identity and conversational setup
 
-The default assistant is 主咪. Machine display defaults to the operating system hostname plus OS type; no serial number, IP or hardware identifier is collected. A random device UUID is generated once and retained. Display renaming never changes that ID.
+The default assistant is 小助手. Machine display defaults to the operating system hostname plus OS type; no serial number, IP or hardware identifier is collected. A random device UUID is generated once and retained. Display renaming never changes that ID.
 
 Identity is saved in private `settings.json` under `WECHAT_AGENT_HOME` (default `~/.local/share/wechat-agent`), alongside the existing private runtime files, outside the repository. Existing saved assistant names and execution permission are retained on upgrade. Setup progress survives restart.
 
@@ -11,7 +11,7 @@ The initial greeting displays the assistant, machine and device ID. Send `/ai �
 Examples:
 
 - `/ai 查看设置` — current non-secret settings and environment locks.
-- `/ai 把你改名叫小咪` — rename with a receipt; `/ai` still works afterward.
+- `/ai 把你改名叫小助手` — rename with a receipt; `/ai` still works afterward.
 - `/ai 设置 机器名称 工作 Mac`
 - `/ai 设置 语言 English`
 - `/ai 设置 时区 Asia/Shanghai`

@@ -22,7 +22,7 @@ test('system config validates atomic edits, redacts private settings, and preser
    assert.ok(!JSON.stringify(initial).includes(text));assert.ok(!describe().includes(text));
   }
   const changed=updateConfig({'助手名':'小咪','语言':'English','回复风格':'详细'},{expectedRevision:initial.revision});
-  assert.deepEqual(changed.values['assistant.aliases'],['小咪','主咪','zhumi']);
+  assert.deepEqual(changed.values['assistant.aliases'],['小咪','小助手','ai']);
   assert.equal(changed.values['response.language'],'English');
   assert.equal(changed.readOnly['monitoring.pollSeconds'],20);assert.equal(changed.readOnly['monitoring.progressSeconds'],45);assert.equal(changed.values['monitoring.pollSeconds'],undefined);
   assert.equal(config.readConfig().monitoring.pollSeconds,20);
